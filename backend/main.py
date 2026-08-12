@@ -9,7 +9,7 @@ import secrets
 import struct
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import anthropic
@@ -1282,7 +1282,7 @@ def _append_timesheet(entry: dict) -> None:
         _timesheets_ws().append_row(
             [
                 entry["id"], entry["employee_id"], entry["employee_name"],
-                entry["date"], entry["clock_in"], entry.get("clock_out") or "",
+                entry["clock_in"], "", "",  # clock_in=full datetime, clock_out="", hours_worked=""
             ],
             value_input_option="RAW",
         )
@@ -1292,12 +1292,23 @@ def _append_timesheet(entry: dict) -> None:
         raise HTTPException(status_code=503, detail=f"Could not write to Timesheets sheet: {exc}")
 
 
-def _update_clock_out(entry_id: str, clock_out: str) -> None:
+def _update_clock_out(entry_id: str, clock_out: str, clock_in_full: str) -> None:
+    """Write clock_out (col 5) and calculated hours_worked (col 6) for a row found by id."""
+    hours_worked = ""
+    try:
+        ci = datetime.strptime(clock_in_full.strip(), "%Y-%m-%d %H:%M")
+        co = datetime.strptime(f"{clock_in_full[:10]} {clock_out.strip()}", "%Y-%m-%d %H:%M")
+        if co < ci:
+            co += timedelta(days=1)  # overnight shift
+        hours_worked = round((co - ci).total_seconds() / 3600, 2)
+    except Exception:
+        pass
     try:
         ws   = _timesheets_ws()
         cell = ws.find(entry_id, in_column=1)
         if cell:
-            ws.update_cell(cell.row, 6, clock_out)  # column 6 = clock_out
+            ws.update_cell(cell.row, 5, clock_out)      # col 5 = clock_out
+            ws.update_cell(cell.row, 6, hours_worked)   # col 6 = hours_worked
     except HTTPException:
         raise
     except Exception as exc:
@@ -1341,13 +1352,14 @@ def _today_status(employee_id: str, timesheets: list[dict]) -> str:
 
 
 def _fmt_clock(time_str: str) -> str:
-    """Convert 'HH:MM' or a full ISO timestamp to '9:30 AM' display format."""
+    """Convert 'HH:MM', 'YYYY-MM-DD HH:MM', or ISO timestamp to '9:30 AM' display format."""
     try:
-        if "T" in time_str:
-            dt = datetime.fromisoformat(time_str)
+        s = time_str.strip()
+        if "T" in s or (len(s) > 5 and " " in s):
+            dt = datetime.fromisoformat(s.replace(" ", "T"))
             h, m = dt.hour, dt.minute
         else:
-            h, m = (int(p) for p in time_str.split(":")[:2])
+            h, m = (int(p) for p in s.split(":")[:2])
         ampm = "AM" if h < 12 else "PM"
         h12  = h % 12 or 12
         return f"{h12}:{m:02d} {ampm}"
@@ -1356,16 +1368,16 @@ def _fmt_clock(time_str: str) -> str:
 
 
 def _calc_hours(e: dict) -> float | None:
-    """Calculate hours worked from a timesheet row that stores date + HH:MM times."""
-    ci_str = e.get("clock_in")
-    co_str = e.get("clock_out")
-    d_str  = _row_date(e)
-    if not (ci_str and co_str and d_str):
+    """Calculate hours worked. clock_in='YYYY-MM-DD HH:MM', clock_out='HH:MM'."""
+    ci_str = (e.get("clock_in") or "").strip()
+    co_str = (e.get("clock_out") or "").strip()
+    if not (ci_str and co_str):
         return None
     try:
-        prefix = f"{d_str}T"
-        ci = datetime.fromisoformat(ci_str if "T" in ci_str else prefix + ci_str)
-        co = datetime.fromisoformat(co_str if "T" in co_str else prefix + co_str)
+        ci = datetime.strptime(ci_str, "%Y-%m-%d %H:%M")
+        co = datetime.strptime(f"{ci_str[:10]} {co_str}", "%Y-%m-%d %H:%M")
+        if co < ci:
+            co += timedelta(days=1)
         return round((co - ci).total_seconds() / 3600, 2)
     except Exception:
         return None
@@ -1737,11 +1749,12 @@ def timeclock_action(req: TimeclockActionRequest):
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found.")
 
-    timesheets = _load_timesheets()
-    now_dt     = datetime.now()
-    today      = now_dt.date().isoformat()
-    now_time   = now_dt.strftime("%H:%M")
-    now_disp   = _fmt_clock(now_time)
+    timesheets     = _load_timesheets()
+    now_dt         = datetime.now()
+    today          = now_dt.date().isoformat()
+    now_time       = now_dt.strftime("%H:%M")
+    now_disp       = _fmt_clock(now_time)
+    clock_in_full  = f"{today} {now_time}"  # e.g. "2026-08-12 22:05"
 
     # Find any open clock-in for this employee (clock_out blank, any date)
     open_entry = next(
@@ -1750,17 +1763,17 @@ def timeclock_action(req: TimeclockActionRequest):
         None,
     )
 
-    print(f"[timeclock] emp={emp['name']!r} now_time={now_time!r} today={today!r} open_entry={open_entry}", flush=True)
+    print(f"[timeclock] emp={emp['name']!r} clock_in_full={clock_in_full!r} open_entry={open_entry}", flush=True)
 
     if open_entry:
-        print(f"[timeclock] → CLOCK OUT: id={open_entry.get('id')!r} writing clock_out={now_time!r}", flush=True)
-        _update_clock_out(open_entry.get("id", ""), now_time)
+        ci_full = (open_entry.get("clock_in") or "").strip()
+        print(f"[timeclock] → CLOCK OUT: id={open_entry.get('id')!r} ci_full={ci_full!r} clock_out={now_time!r}", flush=True)
+        _update_clock_out(open_entry.get("id", ""), now_time, ci_full)
         return {"action": "out", "name": emp["name"], "time": now_disp}
 
     new_row = {
         "id": str(uuid.uuid4()), "employee_id": emp["id"],
-        "employee_name": emp["name"], "date": today,
-        "clock_in": now_time, "clock_out": None,
+        "employee_name": emp["name"], "clock_in": clock_in_full,
     }
     print(f"[timeclock] → CLOCK IN: writing row={new_row}", flush=True)
     _append_timesheet(new_row)
