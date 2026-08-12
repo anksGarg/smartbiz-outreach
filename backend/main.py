@@ -1213,7 +1213,13 @@ _gs_sheet  = None
 def _get_sheet():
     global _gs_client, _gs_sheet
     if _gs_sheet is None:
-        creds      = _SACredentials.from_service_account_file(str(_CREDS_FILE), scopes=_SCOPES)
+        creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
+        if creds_json:
+            import json as _json
+            info   = _json.loads(creds_json)
+            creds  = _SACredentials.from_service_account_info(info, scopes=_SCOPES)
+        else:
+            creds  = _SACredentials.from_service_account_file(str(_CREDS_FILE), scopes=_SCOPES)
         _gs_client = gspread.authorize(creds)
         _gs_sheet  = _gs_client.open_by_key(_SHEET_ID)
     return _gs_sheet
