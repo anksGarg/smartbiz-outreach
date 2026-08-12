@@ -1725,30 +1725,45 @@ def timeclock_qr():
     return {"qr_code": _make_qr_b64(url), "url": url}
 
 
+def _is_blank(val) -> bool:
+    """True if a Sheets cell value counts as empty (None, '', or whitespace)."""
+    return val is None or (isinstance(val, str) and not val.strip())
+
+
 @app.post("/timeclock/action")
 def timeclock_action(req: TimeclockActionRequest):
     employees = _load_employees()
     emp = next((e for e in employees if e.get("id") == req.employee_id), None)
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found.")
-    timesheets    = _load_timesheets()
-    now_dt        = datetime.now()
-    today         = now_dt.date().isoformat()
-    now_time      = now_dt.strftime("%H:%M")
-    now_disp      = _fmt_clock(now_time)
-    today_entries = [
-        t for t in timesheets
-        if t.get("employee_id") == emp["id"] and _row_date(t) == today
-    ]
-    last = max(today_entries, key=lambda x: x.get("clock_in") or "") if today_entries else None
-    if last and not last.get("clock_out"):
-        _update_clock_out(last.get("id", ""), now_time)
+
+    timesheets = _load_timesheets()
+    now_dt     = datetime.now()
+    today      = now_dt.date().isoformat()
+    now_time   = now_dt.strftime("%H:%M")
+    now_disp   = _fmt_clock(now_time)
+
+    # Find any open clock-in for this employee (clock_out blank, any date)
+    open_entry = next(
+        (t for t in timesheets
+         if t.get("employee_id") == emp["id"] and _is_blank(t.get("clock_out"))),
+        None,
+    )
+
+    print(f"[timeclock] emp={emp['name']!r} now_time={now_time!r} today={today!r} open_entry={open_entry}", flush=True)
+
+    if open_entry:
+        print(f"[timeclock] → CLOCK OUT: id={open_entry.get('id')!r} writing clock_out={now_time!r}", flush=True)
+        _update_clock_out(open_entry.get("id", ""), now_time)
         return {"action": "out", "name": emp["name"], "time": now_disp}
-    _append_timesheet({
+
+    new_row = {
         "id": str(uuid.uuid4()), "employee_id": emp["id"],
         "employee_name": emp["name"], "date": today,
         "clock_in": now_time, "clock_out": None,
-    })
+    }
+    print(f"[timeclock] → CLOCK IN: writing row={new_row}", flush=True)
+    _append_timesheet(new_row)
     return {"action": "in", "name": emp["name"], "time": now_disp}
 
 
