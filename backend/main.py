@@ -13,9 +13,11 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 import anthropic
+import gspread
 import httpx
 import pandas as pd
 from dotenv import load_dotenv
+from google.oauth2.service_account import Credentials as _SACredentials
 import qrcode as _qrlib
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -1200,34 +1202,91 @@ def add_contact(contact: ContactIn):
 
 # ── Time Tracking ──────────────────────────────────────────────────────────────
 
-EMPLOYEES_FILE  = DATA_DIR / "employees.json"
-TIMESHEETS_FILE = DATA_DIR / "timesheets.json"
+_SHEET_ID   = "1MzNRiBW2-RIaCJ-BIqb7f_Faj3Ej2P1S4e4XgOmoqVY"
+_CREDS_FILE = Path(__file__).parent / "google-credentials.json"
+_SCOPES     = ["https://www.googleapis.com/auth/spreadsheets"]
+
+_gs_client = None
+_gs_sheet  = None
+
+
+def _get_sheet():
+    global _gs_client, _gs_sheet
+    if _gs_sheet is None:
+        creds      = _SACredentials.from_service_account_file(str(_CREDS_FILE), scopes=_SCOPES)
+        _gs_client = gspread.authorize(creds)
+        _gs_sheet  = _gs_client.open_by_key(_SHEET_ID)
+    return _gs_sheet
+
+
+def _employees_ws():
+    return _get_sheet().worksheet("Employees")
+
+
+def _timesheets_ws():
+    return _get_sheet().worksheet("Timesheets")
+
+
+def _norm(records: list[dict]) -> list[dict]:
+    """Convert empty-string cells from Sheets into None to match the old JSON behaviour."""
+    return [{k: (None if v == "" else v) for k, v in r.items()} for r in records]
 
 
 def _load_employees() -> list[dict]:
-    if not EMPLOYEES_FILE.exists():
-        return []
     try:
-        return json.loads(EMPLOYEES_FILE.read_text()) or []
-    except (json.JSONDecodeError, OSError):
-        return []
+        return _norm(_employees_ws().get_all_records())
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not read Employees sheet: {exc}")
 
 
-def _save_employees(data: list[dict]) -> None:
-    EMPLOYEES_FILE.write_text(json.dumps(data, indent=2))
+def _append_employee(emp: dict) -> None:
+    try:
+        _employees_ws().append_row(
+            [emp["id"], emp["name"], emp["token"]],
+            value_input_option="RAW",
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not write to Employees sheet: {exc}")
 
 
 def _load_timesheets() -> list[dict]:
-    if not TIMESHEETS_FILE.exists():
-        return []
     try:
-        return json.loads(TIMESHEETS_FILE.read_text()) or []
-    except (json.JSONDecodeError, OSError):
-        return []
+        return _norm(_timesheets_ws().get_all_records())
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not read Timesheets sheet: {exc}")
 
 
-def _save_timesheets(data: list[dict]) -> None:
-    TIMESHEETS_FILE.write_text(json.dumps(data, indent=2))
+def _append_timesheet(entry: dict) -> None:
+    try:
+        _timesheets_ws().append_row(
+            [
+                entry["id"], entry["employee_id"], entry["employee_name"],
+                entry["date"], entry["clock_in"], entry.get("clock_out") or "",
+            ],
+            value_input_option="RAW",
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not write to Timesheets sheet: {exc}")
+
+
+def _update_clock_out(entry_id: str, clock_out: str) -> None:
+    try:
+        ws   = _timesheets_ws()
+        cell = ws.find(entry_id, in_column=1)
+        if cell:
+            ws.update_cell(cell.row, 6, clock_out)  # column 6 = clock_out
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not update Timesheets sheet: {exc}")
 
 
 def _make_qr_b64(url: str) -> str:
@@ -1331,8 +1390,7 @@ def create_employee(req: AddEmployeeRequest):
     if any(e["name"].lower() == req.name.strip().lower() for e in employees):
         raise HTTPException(status_code=400, detail=f"'{req.name.strip()}' already exists.")
     emp = {"id": str(uuid.uuid4()), "name": req.name.strip(), "token": secrets.token_urlsafe(8)}
-    employees.append(emp)
-    _save_employees(employees)
+    _append_employee(emp)
     return {**emp, "status": "Out"}
 
 
@@ -1355,11 +1413,10 @@ def clock_event(token: str):
     last = max(today_entries, key=lambda x: x["clock_in"]) if today_entries else None
 
     if last and last["clock_out"] is None:
-        last["clock_out"] = now
-        _save_timesheets(timesheets)
+        _update_clock_out(last["id"], now)
         return HTMLResponse(_clock_html(emp["name"], "Clocked Out", now_disp, color="#ef4444"))
 
-    timesheets.append({
+    _append_timesheet({
         "id":            str(uuid.uuid4()),
         "employee_id":   emp["id"],
         "employee_name": emp["name"],
@@ -1367,7 +1424,6 @@ def clock_event(token: str):
         "clock_in":      now,
         "clock_out":     None,
     })
-    _save_timesheets(timesheets)
     return HTMLResponse(_clock_html(emp["name"], "Clocked In", now_disp, color="#22c55e"))
 
 
@@ -1627,15 +1683,13 @@ def timeclock_action(req: TimeclockActionRequest):
                      if t["employee_id"] == emp["id"] and t["date"] == today]
     last = max(today_entries, key=lambda x: x["clock_in"]) if today_entries else None
     if last and last["clock_out"] is None:
-        last["clock_out"] = now
-        _save_timesheets(timesheets)
+        _update_clock_out(last["id"], now)
         return {"action": "out", "name": emp["name"], "time": now_disp}
-    timesheets.append({
+    _append_timesheet({
         "id": str(uuid.uuid4()), "employee_id": emp["id"],
         "employee_name": emp["name"], "date": today,
         "clock_in": now, "clock_out": None,
     })
-    _save_timesheets(timesheets)
     return {"action": "in", "name": emp["name"], "time": now_disp}
 
 

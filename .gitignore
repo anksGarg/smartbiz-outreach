@@ -12,6 +12,11 @@ __pycache__/
 venv/
 *.env
 
+# Credentials
+google-credentials.json
+*-credentials.json
+*-service-account.json
+
 # Node
 node_modules/
 dist/
