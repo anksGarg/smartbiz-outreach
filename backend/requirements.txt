@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+httpx
+python-dotenv
+pandas
+openpyxl
+python-multipart
+anthropic
+pyproj
+qrcode[pil]

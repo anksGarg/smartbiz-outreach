@@ -1,0 +1,26 @@
+# Data files — too large for git
+backend/data/TAXLOTS/
+backend/data/rlis_cache.csv
+backend/data/rlis_free_addresses.zip
+backend/data/*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+*.env
+
+# Node
+node_modules/
+dist/
+.parcel-cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

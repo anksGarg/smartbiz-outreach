@@ -1,0 +1,48 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:gis-pdx.opendata.arcgis.com)",
+      "WebFetch(domain:hub.arcgis.com)",
+      "WebFetch(domain:www.arcgis.com)",
+      "WebFetch(domain:services.arcgis.com)",
+      "Bash(unzip -l rlis_free_addresses.zip)",
+      "Bash(unzip -o rlis_free_addresses.zip \"TAXLOTS/master_address.*\")",
+      "Bash(unzip -o /Users/ankurgarg/smartbiz-outreach/backend/data/rlis_free_addresses.zip \"TAXLOTS/master_address.dbf\" -d /Users/ankurgarg/smartbiz-outreach/backend/data/)",
+      "Bash(python3 -c ' *)",
+      "Bash(unzip -o /Users/ankurgarg/smartbiz-outreach/backend/data/rlis_free_addresses.zip \"TAXLOTS/master_address.prj\" \"TAXLOTS/taxlots_public.dbf\" -d /Users/ankurgarg/smartbiz-outreach/backend/data/)",
+      "Bash(python3 -c \"from pyproj import Transformer; print\\('ok'\\)\")",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(sleep 3 && cat /tmp/backend.log)",
+      "Read(//private/tmp/**)",
+      "Bash(curl -s -X POST http://localhost:8000/generate-leads -H 'Content-Type: application/json' -d '{\"zip\":\"97201\",\"county\":\"\",\"property_type\":\"both\"}')",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git rm *)",
+      "Bash(pkill -f \"uvicorn main:app\")",
+      "Bash(python3 -m uvicorn main:app --reload --port 8000)",
+      "Bash(curl -s -X POST http://localhost:8000/enrich -H 'Content-Type: application/json' -d '{\"address\":\"1234 NW 23rd Ave, Portland, OR\",\"name\":\"\",\"company\":\"\",\"phone\":\"\",\"email\":\"\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s -X POST http://localhost:8000/enrich -H 'Content-Type: application/json' -d '{\"address\":\"123 NW Oak St, Portland, OR\",\"property_type\":\"Residential\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/enrich -H 'Content-Type: application/json' -d '{\"address\":\"1455 NW Irving St, Portland, OR\",\"property_type\":\"Commercial\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/enrich -H 'Content-Type: application/json' -d '{\"address\":\"1 SW Columbia St, Portland, OR\",\"property_type\":\"Commercial\",\"company\":\"US Bancorp Tower\"}')",
+      "Bash(pkill -f \"uvicorn main:app\" 2>/dev/null; sleep 1 *)",
+      "Bash(curl -s -X POST http://localhost:8000/enrich -H 'Content-Type: application/json' -d '{\"address\":\"1 SW Columbia St, Portland, OR\",\"property_type\":\"Commercial\"}')",
+      "Bash(python3 -m json.tool /Users/ankurgarg/smartbiz-outreach/backend/data/contacts.json)",
+      "Bash(curl -s -X POST http://localhost:8000/enrich -H 'Content-Type: application/json' -d '{\"address\":\"6000 NW JACKSON SCHOOL RD, Hillsboro, OR 97124\",\"property_type\":\"Commercial\"}')",
+      "WebSearch",
+      "WebFetch(domain:developer.batchdata.com)",
+      "WebFetch(domain:batchdata.io)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(python3 -c \"from concurrent.futures import ThreadPoolExecutor; import sys; sys.path.insert\\(0, '.'\\); exec\\(open\\('main.py'\\).read\\(\\).split\\('load_dotenv'\\)[0]\\); print\\('syntax ok'\\)\")",
+      "Bash(python3 -m py_compile main.py)",
+      "Bash(nohup .venv/bin/uvicorn main:app --reload --port 8000)",
+      "Bash(echo \"started pid $!\")",
+      "Bash(uvicorn --version)",
+      "Bash(pip3 show *)"
+    ],
+    "additionalDirectories": [
+      "/private/tmp"
+    ]
+  }
+}

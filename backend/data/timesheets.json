@@ -1,0 +1,42 @@
+[
+  {
+    "id": "b3388f5c-ffd1-4951-a746-de0719f25301",
+    "employee_id": "7b3222c4-8ed2-4922-9df4-2b88378c9350",
+    "employee_name": "Emp A",
+    "date": "2026-08-12",
+    "clock_in": "2026-08-12T11:25:15",
+    "clock_out": "2026-08-12T11:25:26"
+  },
+  {
+    "id": "21cf3f79-f4a2-48db-9bec-a57bdcca3f65",
+    "employee_id": "3ef93a30-7c09-4cbb-8209-4bafd81e68d5",
+    "employee_name": "Emp B",
+    "date": "2026-08-12",
+    "clock_in": "2026-08-12T11:25:20",
+    "clock_out": "2026-08-12T11:25:29"
+  },
+  {
+    "id": "1f564782-9069-4c23-9a14-57826b13c51e",
+    "employee_id": "49d7a186-f47a-49da-ba9c-9569b8a39870",
+    "employee_name": "John Doe",
+    "date": "2026-08-12",
+    "clock_in": "2026-08-12T11:25:23",
+    "clock_out": "2026-08-12T11:25:30"
+  },
+  {
+    "id": "e24b1d1b-1ce0-4645-9448-5a89e53025b7",
+    "employee_id": "7b3222c4-8ed2-4922-9df4-2b88378c9350",
+    "employee_name": "Emp A",
+    "date": "2026-08-12",
+    "clock_in": "2026-08-12T11:32:28",
+    "clock_out": "2026-08-12T11:32:36"
+  },
+  {
+    "id": "2b2afca3-8d85-45d9-9b29-e87fefd44cc8",
+    "employee_id": "7b3222c4-8ed2-4922-9df4-2b88378c9350",
+    "employee_name": "Emp A",
+    "date": "2026-08-12",
+    "clock_in": "2026-08-12T11:37:15",
+    "clock_out": null
+  }
+]

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "",
+    "company": "",
+    "phone": "",
+    "email": "",
+    "address": "2648 N INTERSTATE AVE, Portland, OR 97227",
+    "property_type": "Commercial",
+    "priority_tier": "Tier 1",
+    "last_contacted": null
+  },
+  {
+    "name": "",
+    "company": "3520-3524 N Mississippi Ave",
+    "phone": "",
+    "email": "",
+    "address": "3520-3524 N MISSISSIPPI AVE, Portland, OR 97227",
+    "property_type": "Commercial",
+    "priority_tier": "Tier 1",
+    "last_contacted": null
+  },
+  {
+    "name": "",
+    "company": "",
+    "phone": "",
+    "email": "",
+    "address": "2037 N WILLIAMS AVE, Portland, OR 97227",
+    "property_type": "Commercial",
+    "priority_tier": "Tier 1",
+    "last_contacted": null
+  },
+  {
+    "name": "",
+    "company": "816-820 N Russell St",
+    "phone": "",
+    "email": "",
+    "address": "816-820 N RUSSELL ST, Portland, OR 97227",
+    "property_type": "Commercial",
+    "priority_tier": "Tier 1",
+    "last_contacted": null
+  },
+  {
+    "name": "",
+    "company": "801-813 N Russell St",
+    "phone": "",
+    "email": "",
+    "address": "801-813 N RUSSELL ST, Portland, OR 97227",
+    "property_type": "Commercial",
+    "priority_tier": "Tier 1",
+    "last_contacted": null
+  }
+]
