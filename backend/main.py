@@ -1237,8 +1237,14 @@ def _timesheets_ws():
 
 
 def _norm(records: list[dict]) -> list[dict]:
-    """Convert empty-string cells from Sheets into None to match the old JSON behaviour."""
-    return [{k: (None if v == "" else v) for k, v in r.items()} for r in records]
+    """Normalise Sheets records: lowercase+underscore keys, empty strings → None."""
+    out = []
+    for row in records:
+        out.append({
+            k.strip().lower().replace(" ", "_"): (None if v == "" else v)
+            for k, v in row.items()
+        })
+    return out
 
 
 def _load_employees() -> list[dict]:
@@ -1313,13 +1319,25 @@ def _make_qr_b64(url: str) -> str:
     return base64.b64encode(buf.getvalue()).decode()
 
 
+def _row_date(t: dict) -> str:
+    """Return the date string for a timesheet row, falling back to parsing clock_in."""
+    d = t.get("date")
+    if d:
+        return str(d)
+    ci = t.get("clock_in") or ""
+    return ci[:10]  # ISO timestamp → "YYYY-MM-DD"
+
+
 def _today_status(employee_id: str, timesheets: list[dict]) -> str:
     today = date.today().isoformat()
-    entries = [t for t in timesheets if t["employee_id"] == employee_id and t["date"] == today]
+    entries = [
+        t for t in timesheets
+        if t.get("employee_id") == employee_id and _row_date(t) == today
+    ]
     if not entries:
         return "Out"
-    last = max(entries, key=lambda x: x["clock_in"])
-    return "In" if last["clock_out"] is None else "Out"
+    last = max(entries, key=lambda x: x.get("clock_in") or "")
+    return "In" if not last.get("clock_out") else "Out"
 
 
 def _fmt_clock(iso_str: str) -> str:
@@ -1382,11 +1400,11 @@ def list_employees():
         status = _today_status(emp["id"], timesheets)
         clock_in_time = None
         if status == "In":
-            today_entries = [t for t in timesheets if t["employee_id"] == emp["id"] and t["date"] == today]
+            today_entries = [t for t in timesheets if t.get("employee_id") == emp["id"] and _row_date(t) == today]
             if today_entries:
-                last = max(today_entries, key=lambda x: x["clock_in"])
-                if last["clock_out"] is None:
-                    clock_in_time = last["clock_in"]
+                last = max(today_entries, key=lambda x: x.get("clock_in") or "")
+                if not last.get("clock_out"):
+                    clock_in_time = last.get("clock_in")
         result.append({**emp, "status": status, "clock_in_time": clock_in_time})
     return {"employees": result}
 
