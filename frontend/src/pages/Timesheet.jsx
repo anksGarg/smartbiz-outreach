@@ -5,6 +5,13 @@ const API = 'https://smartbiz-outreach.onrender.com'
 function fmtTime(isoStr) {
   if (!isoStr) return '—'
   try {
+    // "HH:MM" stored from Sheets — convert to "9:30 AM"
+    if (/^\d{1,2}:\d{2}$/.test(isoStr)) {
+      const [h, m] = isoStr.split(':').map(Number)
+      const ap = h >= 12 ? 'PM' : 'AM'
+      const h12 = h % 12 || 12
+      return `${h12}:${String(m).padStart(2, '0')} ${ap}`
+    }
     const dt = new Date(isoStr)
     return dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
   } catch { return isoStr }

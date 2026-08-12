@@ -1340,15 +1340,35 @@ def _today_status(employee_id: str, timesheets: list[dict]) -> str:
     return "In" if not last.get("clock_out") else "Out"
 
 
-def _fmt_clock(iso_str: str) -> str:
+def _fmt_clock(time_str: str) -> str:
+    """Convert 'HH:MM' or a full ISO timestamp to '9:30 AM' display format."""
     try:
-        dt = datetime.fromisoformat(iso_str)
-        h = dt.hour
+        if "T" in time_str:
+            dt = datetime.fromisoformat(time_str)
+            h, m = dt.hour, dt.minute
+        else:
+            h, m = (int(p) for p in time_str.split(":")[:2])
         ampm = "AM" if h < 12 else "PM"
-        h12 = h % 12 or 12
-        return f"{h12}:{dt.strftime('%M')} {ampm}"
+        h12  = h % 12 or 12
+        return f"{h12}:{m:02d} {ampm}"
     except Exception:
-        return iso_str
+        return time_str
+
+
+def _calc_hours(e: dict) -> float | None:
+    """Calculate hours worked from a timesheet row that stores date + HH:MM times."""
+    ci_str = e.get("clock_in")
+    co_str = e.get("clock_out")
+    d_str  = _row_date(e)
+    if not (ci_str and co_str and d_str):
+        return None
+    try:
+        prefix = f"{d_str}T"
+        ci = datetime.fromisoformat(ci_str if "T" in ci_str else prefix + ci_str)
+        co = datetime.fromisoformat(co_str if "T" in co_str else prefix + co_str)
+        return round((co - ci).total_seconds() / 3600, 2)
+    except Exception:
+        return None
 
 
 def _clock_html(name: str, action: str, time_str: str,
@@ -1432,15 +1452,16 @@ def clock_event(token: str):
         )
 
     timesheets    = _load_timesheets()
-    today         = date.today().isoformat()
-    now           = datetime.now().isoformat(timespec="seconds")
-    now_disp      = _fmt_clock(now)
+    now_dt        = datetime.now()
+    today         = now_dt.date().isoformat()
+    now_time      = now_dt.strftime("%H:%M")
+    now_disp      = _fmt_clock(now_time)
     today_entries = [t for t in timesheets
-                     if t["employee_id"] == emp["id"] and t["date"] == today]
-    last = max(today_entries, key=lambda x: x["clock_in"]) if today_entries else None
+                     if t.get("employee_id") == emp["id"] and _row_date(t) == today]
+    last = max(today_entries, key=lambda x: x.get("clock_in") or "") if today_entries else None
 
-    if last and last["clock_out"] is None:
-        _update_clock_out(last["id"], now)
+    if last and not last.get("clock_out"):
+        _update_clock_out(last.get("id", ""), now_time)
         return HTMLResponse(_clock_html(emp["name"], "Clocked Out", now_disp, color="#ef4444"))
 
     _append_timesheet({
@@ -1448,7 +1469,7 @@ def clock_event(token: str):
         "employee_id":   emp["id"],
         "employee_name": emp["name"],
         "date":          today,
-        "clock_in":      now,
+        "clock_in":      now_time,
         "clock_out":     None,
     })
     return HTMLResponse(_clock_html(emp["name"], "Clocked In", now_disp, color="#22c55e"))
@@ -1711,21 +1732,22 @@ def timeclock_action(req: TimeclockActionRequest):
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found.")
     timesheets    = _load_timesheets()
-    today         = date.today().isoformat()
-    now           = datetime.now().isoformat(timespec="seconds")
-    now_disp      = _fmt_clock(now)
+    now_dt        = datetime.now()
+    today         = now_dt.date().isoformat()
+    now_time      = now_dt.strftime("%H:%M")
+    now_disp      = _fmt_clock(now_time)
     today_entries = [
         t for t in timesheets
         if t.get("employee_id") == emp["id"] and _row_date(t) == today
     ]
     last = max(today_entries, key=lambda x: x.get("clock_in") or "") if today_entries else None
     if last and not last.get("clock_out"):
-        _update_clock_out(last.get("id", ""), now)
+        _update_clock_out(last.get("id", ""), now_time)
         return {"action": "out", "name": emp["name"], "time": now_disp}
     _append_timesheet({
         "id": str(uuid.uuid4()), "employee_id": emp["id"],
         "employee_name": emp["name"], "date": today,
-        "clock_in": now, "clock_out": None,
+        "clock_in": now_time, "clock_out": None,
     })
     return {"action": "in", "name": emp["name"], "time": now_disp}
 
@@ -1734,16 +1756,8 @@ def timeclock_action(req: TimeclockActionRequest):
 def get_timesheet():
     entries = _load_timesheets()
     result  = []
-    for e in sorted(entries, key=lambda x: (x["date"], x["employee_name"])):
-        hours = None
-        if e["clock_in"] and e["clock_out"]:
-            try:
-                ci    = datetime.fromisoformat(e["clock_in"])
-                co    = datetime.fromisoformat(e["clock_out"])
-                hours = round((co - ci).total_seconds() / 3600, 2)
-            except Exception:
-                pass
-        result.append({**e, "hours": hours})
+    for e in sorted(entries, key=lambda x: (_row_date(x), x.get("employee_name", ""))):
+        result.append({**e, "hours": _calc_hours(e)})
     return {"entries": result}
 
 
@@ -1766,24 +1780,16 @@ def export_timesheet():
         c.alignment = Alignment(horizontal="center")
 
     for ri, e in enumerate(entries, 2):
-        hours = None
-        if e["clock_in"] and e["clock_out"]:
-            try:
-                hours = round(
-                    (datetime.fromisoformat(e["clock_out"])
-                     - datetime.fromisoformat(e["clock_in"])).total_seconds() / 3600, 2
-                )
-            except Exception:
-                pass
+        hours = _calc_hours(e)
         row = [
-            e["employee_name"], e["date"],
-            _fmt_clock(e["clock_in"])  if e["clock_in"]  else "",
-            _fmt_clock(e["clock_out"]) if e["clock_out"] else "",
+            e.get("employee_name", ""), _row_date(e),
+            _fmt_clock(e["clock_in"])  if e.get("clock_in")  else "",
+            _fmt_clock(e["clock_out"]) if e.get("clock_out") else "",
             hours if hours is not None else "",
         ]
         for col, val in enumerate(row, 1):
             c = ws.cell(row=ri, column=col, value=val)
-            if not e["clock_out"]:
+            if not e.get("clock_out"):
                 c.fill = yellow_fill
 
     for col, w in zip("ABCDE", [22, 12, 12, 12, 14]):
