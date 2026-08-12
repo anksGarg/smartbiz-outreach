@@ -1468,21 +1468,24 @@ def clock_event(token: str):
     today         = now_dt.date().isoformat()
     now_time      = now_dt.strftime("%H:%M")
     now_disp      = _fmt_clock(now_time)
-    today_entries = [t for t in timesheets
-                     if t.get("employee_id") == emp["id"] and _row_date(t) == today]
-    last = max(today_entries, key=lambda x: x.get("clock_in") or "") if today_entries else None
+    clock_in_full = f"{today} {now_time}"
 
-    if last and not last.get("clock_out"):
-        _update_clock_out(last.get("id", ""), now_time)
+    open_entry = next(
+        (t for t in timesheets
+         if t.get("employee_id") == emp["id"] and _is_blank(t.get("clock_out"))),
+        None,
+    )
+
+    if open_entry:
+        ci_full = (open_entry.get("clock_in") or "").strip()
+        _update_clock_out(open_entry.get("id", ""), now_time, ci_full)
         return HTMLResponse(_clock_html(emp["name"], "Clocked Out", now_disp, color="#ef4444"))
 
     _append_timesheet({
         "id":            str(uuid.uuid4()),
         "employee_id":   emp["id"],
         "employee_name": emp["name"],
-        "date":          today,
-        "clock_in":      now_time,
-        "clock_out":     None,
+        "clock_in":      clock_in_full,
     })
     return HTMLResponse(_clock_html(emp["name"], "Clocked In", now_disp, color="#22c55e"))
 
