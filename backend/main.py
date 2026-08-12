@@ -1649,19 +1649,27 @@ async function doAction(emp){
   var btn=document.getElementById('a-btn');
   btn.disabled=true;
   btn.textContent='Please wait…';
+  var d=null;
   try{
     var r=await fetch('/timeclock/action',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({employee_id:emp.id})
     });
-    var d=await r.json();
-    showConfirm(d);
+    if(!r.ok){
+      btn.disabled=false;
+      btn.textContent=emp.status==='In'?'Clock Out':'Clock In';
+      alert('Something went wrong (error '+r.status+'). Please try again.');
+      return;
+    }
+    d=await r.json();
   }catch(e){
     btn.disabled=false;
     btn.textContent=emp.status==='In'?'Clock Out':'Clock In';
-    alert('Something went wrong. Please try again.');
+    alert('Could not reach the server. Check your connection and try again.');
+    return;
   }
+  showConfirm(d);
 }
 
 function showConfirm(d){
@@ -1699,18 +1707,20 @@ def timeclock_qr():
 @app.post("/timeclock/action")
 def timeclock_action(req: TimeclockActionRequest):
     employees = _load_employees()
-    emp = next((e for e in employees if e["id"] == req.employee_id), None)
+    emp = next((e for e in employees if e.get("id") == req.employee_id), None)
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found.")
     timesheets    = _load_timesheets()
     today         = date.today().isoformat()
     now           = datetime.now().isoformat(timespec="seconds")
     now_disp      = _fmt_clock(now)
-    today_entries = [t for t in timesheets
-                     if t["employee_id"] == emp["id"] and t["date"] == today]
-    last = max(today_entries, key=lambda x: x["clock_in"]) if today_entries else None
-    if last and last["clock_out"] is None:
-        _update_clock_out(last["id"], now)
+    today_entries = [
+        t for t in timesheets
+        if t.get("employee_id") == emp["id"] and _row_date(t) == today
+    ]
+    last = max(today_entries, key=lambda x: x.get("clock_in") or "") if today_entries else None
+    if last and not last.get("clock_out"):
+        _update_clock_out(last.get("id", ""), now)
         return {"action": "out", "name": emp["name"], "time": now_disp}
     _append_timesheet({
         "id": str(uuid.uuid4()), "employee_id": emp["id"],
