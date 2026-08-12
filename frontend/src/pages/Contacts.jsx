@@ -25,19 +25,19 @@ function PriorityBadge({ value }) {
 
 const TEMPLATES = {
   'Storm Damage': (c) =>
-    `Hi ${c.name || 'there'},\n\nWe noticed your ${c.property_type?.toLowerCase() || 'property'} at ${c.address || 'your location'} may have been impacted by recent storm activity. Our team specializes in fast, reliable roof and gutter repairs in Portland. We'd love to offer you a free damage assessment — no obligation.\n\nBest,\nPortland Roofing & Gutters`,
+    `Hi ${c.name || 'there'},\n\nWe noticed your ${c.property_type?.toLowerCase() || 'property'} at ${c.address || 'your location'} may have been impacted by recent storm activity. Our team specializes in fast, reliable roof and gutter repairs in Portland. We'd love to offer you a free damage assessment — no obligation.\n\nBest,\nWillamette Power Roofing`,
 
   'Gutter Cleaning': (c) =>
-    `Hi ${c.name || 'there'},\n\nFall is right around the corner, and clogged gutters can cause serious water damage. We're scheduling gutter cleanings in your area and would love to help you get ahead of it.\n\nWould you be open to a quick quote? We're fast, tidy, and locally owned.\n\nBest,\nPortland Roofing & Gutters`,
+    `Hi ${c.name || 'there'},\n\nFall is right around the corner, and clogged gutters can cause serious water damage. We're scheduling gutter cleanings in your area and would love to help you get ahead of it.\n\nWould you be open to a quick quote? We're fast, tidy, and locally owned.\n\nBest,\nWillamette Power Roofing`,
 
   'Free Inspection': (c) =>
-    `Hi ${c.name || 'there'},\n\nWe're offering free roof inspections for ${c.property_type?.toLowerCase() || 'property'} owners in the Portland area this month. It takes about 20 minutes and we'll give you a honest assessment — no pressure.\n\nWould you like to schedule a time?\n\nBest,\nPortland Roofing & Gutters`,
+    `Hi ${c.name || 'there'},\n\nWe're offering free roof inspections for ${c.property_type?.toLowerCase() || 'property'} owners in the Portland area this month. It takes about 20 minutes and we'll give you a honest assessment — no pressure.\n\nWould you like to schedule a time?\n\nBest,\nWillamette Power Roofing`,
 
   'Check-In': (c) =>
-    `Hi ${c.name || 'there'},\n\nJust checking in to see how things are going at ${c.company || c.address || 'your property'}. If you ever need roofing or gutter work, we're always happy to stop by for a look.\n\nHope all is well!\n\nBest,\nPortland Roofing & Gutters`,
+    `Hi ${c.name || 'there'},\n\nJust checking in to see how things are going at ${c.company || c.address || 'your property'}. If you ever need roofing or gutter work, we're always happy to stop by for a look.\n\nHope all is well!\n\nBest,\nWillamette Power Roofing`,
 
   'Referral Ask': (c) =>
-    `Hi ${c.name || 'there'},\n\nThank you for your continued trust in us! If you know anyone who needs roofing or gutter service in Portland, we'd really appreciate the referral. We take great care of everyone you send our way.\n\nThanks so much!\n\nPortland Roofing & Gutters`,
+    `Hi ${c.name || 'there'},\n\nThank you for your continued trust in us! If you know anyone who needs roofing or gutter service in Portland, we'd really appreciate the referral. We take great care of everyone you send our way.\n\nThanks so much!\n\nWillamette Power Roofing`,
 }
 
 export default function Contacts() {

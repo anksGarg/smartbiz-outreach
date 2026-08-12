@@ -264,7 +264,7 @@ class SendRequest(BaseModel):
 def send_email(req: SendRequest):
     brevo_key = os.getenv("BREVO_API_KEY")
     from_email = os.getenv("BREVO_FROM_EMAIL")
-    from_name = os.getenv("BREVO_FROM_NAME", "Portland Roofing & Gutters")
+    from_name = os.getenv("BREVO_FROM_NAME", "Willamette Power Roofing")
 
     if not brevo_key or brevo_key == "your_brevo_api_key_here":
         raise HTTPException(status_code=500, detail="BREVO_API_KEY not configured in .env")
@@ -273,7 +273,7 @@ def send_email(req: SendRequest):
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    subject = f"A note for {req.name}" if req.name else "Message from Portland Roofing & Gutters"
+    subject = f"A note for {req.name}" if req.name else "Message from Willamette Power Roofing"
 
     payload = {
         "sender": {"name": from_name, "email": from_email},
@@ -1358,7 +1358,7 @@ def _clock_html(name: str, action: str, time_str: str,
 </head>
 <body>
 <div class="card">
-  <div class="co">Portland Roofing &amp; Gutters</div>
+  <div class="co">Willamette Power Roofing</div>
   <div class="icon">{icon}</div>
   <div class="name"{err_attr}>{name}</div>
   <div class="action">{action}</div>
@@ -1491,7 +1491,7 @@ header p{font-size:.85rem;opacity:.75;margin-top:4px}
 </head>
 <body>
 <header>
-  <h1>Portland Roofing &amp; Gutters</h1>
+  <h1>Willamette Power Roofing</h1>
   <p>Employee Time Clock</p>
 </header>
 

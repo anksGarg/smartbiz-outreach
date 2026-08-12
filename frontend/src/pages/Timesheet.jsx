@@ -114,7 +114,7 @@ export default function Timesheet() {
 </head>
 <body onload="window.print()">
   <img src="data:image/png;base64,${companyQR.qr_code}" />
-  <h2>Portland Roofing &amp; Gutters</h2>
+  <h2>Willamette Power Roofing</h2>
   <p>Scan to clock in / clock out</p>
 </body>
 </html>`
