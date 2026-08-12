@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const API = 'http://localhost:8000'
+const API = 'https://smartbiz-outreach.onrender.com'
 
 function fmtTime(isoStr) {
   if (!isoStr) return '—'

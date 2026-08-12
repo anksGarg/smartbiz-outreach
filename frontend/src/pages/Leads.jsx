@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 
-const API = 'http://localhost:8000'
+const API = 'https://smartbiz-outreach.onrender.com'
 
 function load(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback } catch { return fallback }
