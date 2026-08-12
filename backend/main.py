@@ -1608,7 +1608,8 @@ init();
 
 @app.get("/timeclock/qr")
 def timeclock_qr():
-    url = "http://192.168.1.15:8000/timeclock"
+    base_url = os.getenv("BASE_URL", "https://smartbiz-outreach.onrender.com")
+    url = f"{base_url}/timeclock"
     return {"qr_code": _make_qr_b64(url), "url": url}
 
 
