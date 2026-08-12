@@ -13,7 +13,7 @@ export default function Sidebar() {
   return (
     <aside className="w-56 min-h-screen bg-gray-900 text-white flex flex-col">
       <div className="px-6 py-5 text-lg font-semibold border-b border-gray-700">
-        SmallBizOutreach
+        Willamette Power Roofing
       </div>
       <nav className="flex flex-col gap-1 px-3 py-4">
         {links.map(({ to, label }) => (
