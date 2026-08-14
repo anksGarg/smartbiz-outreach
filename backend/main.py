@@ -1787,7 +1787,7 @@ function showAction(emp){
     statusEl.textContent='On lunch since '+fmtHHMM(emp.lunch_out_time);
     btns.appendChild(makeBtn('Back from Lunch','btn-in',function(){doAction(emp,'lunch_in')}));
   } else if(st==='returned_from_lunch'){
-    statusEl.textContent='Clocked in · Back from lunch';
+    statusEl.textContent='Clocked in at '+fmtHHMM(emp.clock_in_time);
     btns.appendChild(makeBtn('Clock Out','btn-out',function(){doAction(emp,'clock_out')}));
   } else if(st==='clocked_out'){
     statusEl.textContent='';
