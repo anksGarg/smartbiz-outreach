@@ -278,7 +278,7 @@ export default function Timesheet() {
       {/* ── Tab 2: Time Log ── */}
       {tab === 'timelog' && (() => {
         const today        = todayStr()
-        const clockedInNow = employees.filter(e => e.status !== 'not_clocked_in' && e.status !== 'clocked_out').length
+        const clockedInNow = employees.filter(e => e.status === 'clocked_in' || e.status === 'returned_from_lunch').length
         const hoursToday   = entries
           .filter(e => e.date === today)
           .reduce((sum, e) => sum + (e.work_hours ?? e.hours ?? 0), 0)
