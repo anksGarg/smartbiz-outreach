@@ -1374,17 +1374,22 @@ def _row_date(t: dict) -> str:
 
 
 def _today_status(employee_id: str, timesheets: list[dict]) -> str:
-    """Return one of: not_clocked_in | clocked_in | on_lunch | returned_from_lunch | clocked_out."""
+    """Return one of: not_clocked_in | clocked_in | on_lunch | returned_from_lunch.
+
+    Uses the most recent row for today. A completed row (clock_out filled) means
+    the employee can start a new session, so we return not_clocked_in.
+    Multiple rows per employee per day are valid.
+    """
     today = datetime.now(_TZ).date().isoformat()
-    row = next(
-        (t for t in timesheets
-         if t.get("employee_id") == employee_id and _row_date(t) == today),
-        None,
-    )
-    if row is None:
+    today_rows = [
+        t for t in timesheets
+        if t.get("employee_id") == employee_id and _row_date(t) == today
+    ]
+    if not today_rows:
         return "not_clocked_in"
+    row = today_rows[-1]  # most recent session
     if not _is_blank(row.get("clock_out")):
-        return "clocked_out"
+        return "not_clocked_in"  # last session complete — ready for a new one
     if not _is_blank(row.get("lunch_in")):
         return "returned_from_lunch"
     if not _is_blank(row.get("lunch_out")):
@@ -1515,16 +1520,20 @@ def list_employees():
     result = []
     for emp in employees:
         status = _today_status(emp["id"], timesheets)
-        today_row = next(
-            (t for t in timesheets
-             if t.get("employee_id") == emp["id"] and _row_date(t) == today),
+        today_rows = [
+            t for t in timesheets
+            if t.get("employee_id") == emp["id"] and _row_date(t) == today
+        ]
+        # Use the most recent open row for display times (None if no open session)
+        open_row = next(
+            (t for t in reversed(today_rows) if _is_blank(t.get("clock_out"))),
             None,
         )
         result.append({
             **emp,
             "status":         status,
-            "clock_in_time":  today_row.get("clock_in")   if today_row else None,
-            "lunch_out_time": today_row.get("lunch_out")  if today_row else None,
+            "clock_in_time":  open_row.get("clock_in")   if open_row else None,
+            "lunch_out_time": open_row.get("lunch_out")  if open_row else None,
         })
     return {"employees": result}
 
@@ -1877,17 +1886,20 @@ def timeclock_action(req: TimeclockActionRequest):
     now_time   = now_dt.strftime("%H:%M")
     now_disp   = _fmt_clock(now_time)
 
-    today_row = next(
-        (t for t in timesheets
-         if t.get("employee_id") == emp["id"] and _row_date(t) == today),
-        None,
-    )
+    # All rows for this employee today, in sheet order (oldest first)
+    today_rows = [
+        t for t in timesheets
+        if t.get("employee_id") == emp["id"] and _row_date(t) == today
+    ]
+    last_row = today_rows[-1] if today_rows else None
+    # The open (active) row is the last one only if it has no clock_out
+    open_row = last_row if (last_row and _is_blank(last_row.get("clock_out"))) else None
 
-    print(f"[timeclock] emp={emp['name']!r} action={req.action!r} now={now_time!r} today_row={today_row}", flush=True)
+    print(f"[timeclock] emp={emp['name']!r} action={req.action!r} now={now_time!r} open_row={open_row}", flush=True)
 
     if req.action == "clock_in":
-        if today_row:
-            raise HTTPException(status_code=400, detail="Already clocked in today.")
+        if open_row:
+            raise HTTPException(status_code=400, detail="Already clocked in — clock out first.")
         new_row = {
             "id": str(uuid.uuid4()), "employee_id": emp["id"],
             "employee_name": emp["name"], "clock_in": f"{today} {now_time}",
@@ -1895,9 +1907,9 @@ def timeclock_action(req: TimeclockActionRequest):
         _append_timesheet(new_row)
         return {"action": "clock_in", "name": emp["name"], "time": now_disp}
 
-    if not today_row:
-        raise HTTPException(status_code=400, detail="No clock-in found for today.")
-    entry_id = today_row.get("id", "")
+    if not open_row:
+        raise HTTPException(status_code=400, detail="No active clock-in found.")
+    entry_id = open_row.get("id", "")
 
     if req.action == "lunch_out":
         _update_cell(entry_id, 5, now_time)  # col 5 = lunch_out
@@ -1908,9 +1920,9 @@ def timeclock_action(req: TimeclockActionRequest):
         return {"action": "lunch_in", "name": emp["name"], "time": now_disp}
 
     if req.action == "clock_out":
-        ci_full   = (today_row.get("clock_in")  or "").strip()
-        lunch_out = (today_row.get("lunch_out") or "").strip()
-        lunch_in  = (today_row.get("lunch_in")  or "").strip()
+        ci_full   = (open_row.get("clock_in")  or "").strip()
+        lunch_out = (open_row.get("lunch_out") or "").strip()
+        lunch_in  = (open_row.get("lunch_in")  or "").strip()
         _update_clock_out(entry_id, now_time, ci_full, lunch_out, lunch_in)
         return {"action": "clock_out", "name": emp["name"], "time": now_disp}
 
