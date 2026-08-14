@@ -44,7 +44,7 @@ export default function Timesheet() {
   // Time log tab
   const [entries,    setEntries]    = useState([])
   const [loadingTs,  setLoadingTs]  = useState(true)
-  const [filterFrom, setFilterFrom] = useState('')
+  const [filterFrom, setFilterFrom] = useState(todayStr())
   const [filterTo,   setFilterTo]   = useState('')
   const [filterEmp,  setFilterEmp]  = useState('')
 
