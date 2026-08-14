@@ -20,6 +20,7 @@ google-credentials.json
 # Node
 node_modules/
 dist/
+!frontend/dist/
 .parcel-cache/
 
 # OS
