@@ -1281,12 +1281,11 @@ def _load_timesheets() -> list[dict]:
 
 
 def _append_timesheet(entry: dict) -> None:
+    # Columns: id | employee_id | employee_name | clock_in | lunch_out | lunch_in | clock_out | hours_worked | notes
     try:
         _timesheets_ws().append_row(
-            [
-                entry["id"], entry["employee_id"], entry["employee_name"],
-                entry["clock_in"], "", "",  # clock_in=full datetime, clock_out="", hours_worked=""
-            ],
+            [entry["id"], entry["employee_id"], entry["employee_name"],
+             entry["clock_in"], "", "", "", "", ""],
             value_input_option="RAW",
         )
     except HTTPException:
@@ -1295,8 +1294,21 @@ def _append_timesheet(entry: dict) -> None:
         raise HTTPException(status_code=503, detail=f"Could not write to Timesheets sheet: {exc}")
 
 
+def _update_cell(entry_id: str, col: int, value) -> None:
+    """Update a single cell in the Timesheets sheet, located by id in column 1."""
+    try:
+        ws   = _timesheets_ws()
+        cell = ws.find(entry_id, in_column=1)
+        if cell:
+            ws.update_cell(cell.row, col, value)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not update Timesheets sheet: {exc}")
+
+
 def _update_clock_out(entry_id: str, clock_out: str, clock_in_full: str) -> None:
-    """Write clock_out (col 5) and calculated hours_worked (col 6) for a row found by id."""
+    """Write clock_out (col 7) and calculated hours_worked (col 8) for a row found by id."""
     hours_worked = ""
     try:
         ci = datetime.strptime(clock_in_full.strip(), "%Y-%m-%d %H:%M")
@@ -1310,8 +1322,8 @@ def _update_clock_out(entry_id: str, clock_out: str, clock_in_full: str) -> None
         ws   = _timesheets_ws()
         cell = ws.find(entry_id, in_column=1)
         if cell:
-            ws.update_cell(cell.row, 5, clock_out)      # col 5 = clock_out
-            ws.update_cell(cell.row, 6, hours_worked)   # col 6 = hours_worked
+            ws.update_cell(cell.row, 7, clock_out)      # col 7 = clock_out
+            ws.update_cell(cell.row, 8, hours_worked)   # col 8 = hours_worked
     except HTTPException:
         raise
     except Exception as exc:
@@ -1343,12 +1355,22 @@ def _row_date(t: dict) -> str:
 
 
 def _today_status(employee_id: str, timesheets: list[dict]) -> str:
-    open_shift = next(
+    """Return one of: not_clocked_in | clocked_in | on_lunch | returned_from_lunch | clocked_out."""
+    today = datetime.now(_TZ).date().isoformat()
+    row = next(
         (t for t in timesheets
-         if t.get("employee_id") == employee_id and _is_blank(t.get("clock_out"))),
+         if t.get("employee_id") == employee_id and _row_date(t) == today),
         None,
     )
-    return "In" if open_shift else "Out"
+    if row is None:
+        return "not_clocked_in"
+    if not _is_blank(row.get("clock_out")):
+        return "clocked_out"
+    if not _is_blank(row.get("lunch_in")):
+        return "returned_from_lunch"
+    if not _is_blank(row.get("lunch_out")):
+        return "on_lunch"
+    return "clocked_in"
 
 
 def _fmt_clock(time_str: str) -> str:
@@ -1426,18 +1448,36 @@ class AddEmployeeRequest(BaseModel):
 def list_employees():
     employees  = _load_employees()
     timesheets = _load_timesheets()
-    today      = date.today().isoformat()
-    result     = []
+    today      = datetime.now(_TZ).date().isoformat()
+
+    # Midnight reset: auto-close any open entries from prior days
+    stale = [
+        t for t in timesheets
+        if _row_date(t) < today and _is_blank(t.get("clock_out"))
+    ]
+    if stale:
+        ts_ws = _timesheets_ws()
+        for t in stale:
+            cell = ts_ws.find(t.get("id", ""), in_column=1)
+            if cell:
+                ts_ws.update_cell(cell.row, 7, "23:59")              # col 7 = clock_out
+                ts_ws.update_cell(cell.row, 9, "missed clock-out")   # col 9 = notes
+        timesheets = _load_timesheets()  # reload with closed entries
+
+    result = []
     for emp in employees:
         status = _today_status(emp["id"], timesheets)
-        clock_in_time = None
-        if status == "In":
-            today_entries = [t for t in timesheets if t.get("employee_id") == emp["id"] and _row_date(t) == today]
-            if today_entries:
-                last = max(today_entries, key=lambda x: x.get("clock_in") or "")
-                if not last.get("clock_out"):
-                    clock_in_time = last.get("clock_in")
-        result.append({**emp, "status": status, "clock_in_time": clock_in_time})
+        today_row = next(
+            (t for t in timesheets
+             if t.get("employee_id") == emp["id"] and _row_date(t) == today),
+            None,
+        )
+        result.append({
+            **emp,
+            "status":         status,
+            "clock_in_time":  today_row.get("clock_in")   if today_row else None,
+            "lunch_out_time": today_row.get("lunch_out")  if today_row else None,
+        })
     return {"employees": result}
 
 
@@ -1492,6 +1532,7 @@ def clock_event(token: str):
 
 class TimeclockActionRequest(BaseModel):
     employee_id: str
+    action: str  # "clock_in" | "clock_out" | "lunch_out" | "lunch_in"
 
 
 @app.get("/timeclock", response_class=HTMLResponse)
@@ -1522,13 +1563,19 @@ header p{font-size:.85rem;opacity:.75;margin-top:4px}
 #s-action{align-items:center;justify-content:center;text-align:center}
 .greeting{font-size:1.1rem;color:#64748b;margin-bottom:6px;font-weight:500}
 .a-name{font-size:2.4rem;font-weight:800;color:#1e293b;margin-bottom:16px;line-height:1.1}
-.a-status{font-size:1rem;color:#64748b;margin-bottom:48px;min-height:1.5em}
-.action-btn{width:100%;max-width:320px;padding:22px;border-radius:16px;border:none;font-size:1.25rem;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.action-btn:disabled{opacity:.5}
+.a-status{font-size:1rem;color:#64748b;margin-bottom:32px;min-height:1.5em}
+#a-btns{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:320px}
+.action-btn{width:100%;padding:22px;border-radius:16px;border:none;font-size:1.2rem;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.action-btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-row{display:flex;gap:12px;width:100%}
+.btn-row .action-btn{flex:1;font-size:1rem;padding:18px 8px}
 .btn-in{background:#16a34a;color:#fff}
-.btn-in:active{background:#15803d}
+.btn-in:active:not(:disabled){background:#15803d}
 .btn-out{background:#dc2626;color:#fff}
-.btn-out:active{background:#b91c1c}
+.btn-out:active:not(:disabled){background:#b91c1c}
+.btn-lunch{background:#d97706;color:#fff}
+.btn-lunch:active:not(:disabled){background:#b45309}
+.done-today{font-size:1.1rem;font-weight:600;color:#16a34a;padding:20px 24px;background:#f0fdf4;border-radius:14px;border:1.5px solid #bbf7d0;width:100%}
 .switch-link{font-size:.82rem;color:#94a3b8;cursor:pointer;padding:20px 16px;margin-top:auto;text-align:center;-webkit-tap-highlight-color:transparent;text-decoration:underline;text-underline-offset:3px}
 .switch-link:active{color:#64748b}
 
@@ -1557,12 +1604,12 @@ header p{font-size:.85rem;opacity:.75;margin-top:4px}
   <div id="emp-list"></div>
 </div>
 
-<!-- Screen 2: Clock in / out -->
+<!-- Screen 2: Action -->
 <div id="s-action" class="screen">
   <div class="greeting">Hi,</div>
   <div class="a-name" id="a-name"></div>
   <div class="a-status" id="a-status"></div>
-  <button id="a-btn" class="action-btn" style="display:none"></button>
+  <div id="a-btns"></div>
   <div class="switch-link" id="switch-link"></div>
 </div>
 
@@ -1577,11 +1624,13 @@ header p{font-size:.85rem;opacity:.75;margin-top:4px}
 <script>
 var currentEmp=null;
 
-function fmt(iso){
-  if(!iso)return'';
-  var d=new Date(iso),h=d.getHours(),m=d.getMinutes();
+function fmtHHMM(s){
+  if(!s)return'';
+  var m=s.match(/(\\d{1,2}):(\\d{2})/);
+  if(!m)return s;
+  var h=parseInt(m[1]),mn=parseInt(m[2]);
   var ap=h>=12?'PM':'AM';h=h%12||12;
-  return h+':'+(m<10?'0':'')+m+' '+ap;
+  return h+':'+(mn<10?'0':'')+mn+' '+ap;
 }
 
 function show(id){
@@ -1596,22 +1645,27 @@ async function fetchAll(){
   return d.employees||[];
 }
 
-// Entry point: check localStorage first
+function makeBtn(label,cls,handler){
+  var b=document.createElement('button');
+  b.className='action-btn '+cls;
+  b.textContent=label;
+  b.onclick=handler;
+  return b;
+}
+
 async function init(){
   var saved=null;
   try{saved=JSON.parse(localStorage.getItem('tc_employee'))}catch(e){}
   if(saved&&saved.id){
-    // Flash their name immediately while fetching status
     show('s-action');
     document.getElementById('a-name').textContent=saved.name;
     document.getElementById('a-status').textContent='Loading…';
-    document.getElementById('a-btn').style.display='none';
+    document.getElementById('a-btns').innerHTML='';
     document.getElementById('switch-link').textContent='';
     try{
       var emps=await fetchAll();
       var emp=emps.find(function(e){return e.id===saved.id});
       if(emp){showAction(emp);return;}
-      // Employee was removed — fall through to selection
       localStorage.removeItem('tc_employee');
     }catch(e){}
   }
@@ -1658,20 +1712,34 @@ function showAction(emp){
   currentEmp=emp;
   document.getElementById('a-name').textContent=emp.name;
   var statusEl=document.getElementById('a-status');
-  var btn=document.getElementById('a-btn');
-  btn.style.display='block';
-  btn.disabled=false;
-  if(emp.status==='In'){
-    statusEl.textContent='Clocked in at '+fmt(emp.clock_in_time);
-    btn.textContent='Clock Out';
-    btn.className='action-btn btn-out';
-    btn.onclick=function(){doAction(emp)};
-  }else{
-    statusEl.textContent='You are not clocked in yet today';
-    btn.textContent='Clock In';
-    btn.className='action-btn btn-in';
-    btn.onclick=function(){doAction(emp)};
+  var btns=document.getElementById('a-btns');
+  btns.innerHTML='';
+
+  var st=emp.status;
+  if(st==='not_clocked_in'){
+    statusEl.textContent='You haven’t clocked in yet today.';
+    btns.appendChild(makeBtn('Clock In','btn-in',function(){doAction(emp,'clock_in')}));
+  } else if(st==='clocked_in'){
+    statusEl.textContent='Clocked in at '+fmtHHMM(emp.clock_in_time);
+    var row=document.createElement('div');
+    row.className='btn-row';
+    row.appendChild(makeBtn('Clock Out','btn-out',function(){doAction(emp,'clock_out')}));
+    row.appendChild(makeBtn('🍔 Lunch','btn-lunch',function(){doAction(emp,'lunch_out')}));
+    btns.appendChild(row);
+  } else if(st==='on_lunch'){
+    statusEl.textContent='On lunch since '+fmtHHMM(emp.lunch_out_time);
+    btns.appendChild(makeBtn('Back from Lunch','btn-in',function(){doAction(emp,'lunch_in')}));
+  } else if(st==='returned_from_lunch'){
+    statusEl.textContent='Clocked in · Back from lunch';
+    btns.appendChild(makeBtn('Clock Out','btn-out',function(){doAction(emp,'clock_out')}));
+  } else if(st==='clocked_out'){
+    statusEl.textContent='';
+    var d=document.createElement('div');
+    d.className='done-today';
+    d.textContent='🎉 You’re done for today!';
+    btns.appendChild(d);
   }
+
   document.getElementById('switch-link').textContent='Not '+emp.name+'? Switch employee';
   document.getElementById('switch-link').onclick=function(){
     localStorage.removeItem('tc_employee');
@@ -1681,27 +1749,25 @@ function showAction(emp){
   show('s-action');
 }
 
-async function doAction(emp){
-  var btn=document.getElementById('a-btn');
-  btn.disabled=true;
-  btn.textContent='Please wait…';
+async function doAction(emp,actionType){
+  document.querySelectorAll('#a-btns button').forEach(function(b){
+    b.disabled=true;b.textContent='Please wait…';
+  });
   var d=null;
   try{
     var r=await fetch('/timeclock/action',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({employee_id:emp.id})
+      body:JSON.stringify({employee_id:emp.id,action:actionType})
     });
     if(!r.ok){
-      btn.disabled=false;
-      btn.textContent=emp.status==='In'?'Clock Out':'Clock In';
+      showAction(emp);
       alert('Something went wrong (error '+r.status+'). Please try again.');
       return;
     }
     d=await r.json();
   }catch(e){
-    btn.disabled=false;
-    btn.textContent=emp.status==='In'?'Clock Out':'Clock In';
+    showAction(emp);
     alert('Could not reach the server. Check your connection and try again.');
     return;
   }
@@ -1709,11 +1775,16 @@ async function doAction(emp){
 }
 
 function showConfirm(d){
-  var isIn=d.action==='in';
-  document.getElementById('c-icon').textContent=isIn?'👋':'✅';
-  document.getElementById('c-msg').textContent=(isIn?'Hi ':'Goodbye ')+d.name+'!';
-  document.getElementById('c-sub').textContent=(isIn?'Clocked in':'Clocked out')+' at '+d.time;
-  // Done: reload this employee's fresh status and return to action screen
+  var map={
+    clock_in: {icon:'👋',msg:'Hi '+d.name+'!',sub:'Clocked in at '+d.time},
+    clock_out:{icon:'✅',msg:'Goodbye '+d.name+'!',sub:'Clocked out at '+d.time},
+    lunch_out:{icon:'🍔',msg:'Enjoy lunch, '+d.name+'!',sub:'Lunch started at '+d.time},
+    lunch_in: {icon:'💼',msg:'Welcome back, '+d.name+'!',sub:'Back at '+d.time}
+  };
+  var m=map[d.action]||{icon:'✅',msg:d.name,sub:d.time};
+  document.getElementById('c-icon').textContent=m.icon;
+  document.getElementById('c-msg').textContent=m.msg;
+  document.getElementById('c-sub').textContent=m.sub;
   document.getElementById('done-btn').onclick=async function(){
     if(currentEmp){
       try{
@@ -1752,35 +1823,48 @@ def timeclock_action(req: TimeclockActionRequest):
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found.")
 
-    timesheets     = _load_timesheets()
-    now_dt         = datetime.now(_TZ)
-    today          = now_dt.date().isoformat()
-    now_time       = now_dt.strftime("%H:%M")
-    now_disp       = _fmt_clock(now_time)
-    clock_in_full  = f"{today} {now_time}"  # e.g. "2026-08-12 22:05"
+    timesheets = _load_timesheets()
+    now_dt     = datetime.now(_TZ)
+    today      = now_dt.date().isoformat()
+    now_time   = now_dt.strftime("%H:%M")
+    now_disp   = _fmt_clock(now_time)
 
-    # Find any open clock-in for this employee (clock_out blank, any date)
-    open_entry = next(
+    today_row = next(
         (t for t in timesheets
-         if t.get("employee_id") == emp["id"] and _is_blank(t.get("clock_out"))),
+         if t.get("employee_id") == emp["id"] and _row_date(t) == today),
         None,
     )
 
-    print(f"[timeclock] emp={emp['name']!r} clock_in_full={clock_in_full!r} open_entry={open_entry}", flush=True)
+    print(f"[timeclock] emp={emp['name']!r} action={req.action!r} now={now_time!r} today_row={today_row}", flush=True)
 
-    if open_entry:
-        ci_full = (open_entry.get("clock_in") or "").strip()
-        print(f"[timeclock] → CLOCK OUT: id={open_entry.get('id')!r} ci_full={ci_full!r} clock_out={now_time!r}", flush=True)
-        _update_clock_out(open_entry.get("id", ""), now_time, ci_full)
-        return {"action": "out", "name": emp["name"], "time": now_disp}
+    if req.action == "clock_in":
+        if today_row:
+            raise HTTPException(status_code=400, detail="Already clocked in today.")
+        new_row = {
+            "id": str(uuid.uuid4()), "employee_id": emp["id"],
+            "employee_name": emp["name"], "clock_in": f"{today} {now_time}",
+        }
+        _append_timesheet(new_row)
+        return {"action": "clock_in", "name": emp["name"], "time": now_disp}
 
-    new_row = {
-        "id": str(uuid.uuid4()), "employee_id": emp["id"],
-        "employee_name": emp["name"], "clock_in": clock_in_full,
-    }
-    print(f"[timeclock] → CLOCK IN: writing row={new_row}", flush=True)
-    _append_timesheet(new_row)
-    return {"action": "in", "name": emp["name"], "time": now_disp}
+    if not today_row:
+        raise HTTPException(status_code=400, detail="No clock-in found for today.")
+    entry_id = today_row.get("id", "")
+
+    if req.action == "lunch_out":
+        _update_cell(entry_id, 5, now_time)  # col 5 = lunch_out
+        return {"action": "lunch_out", "name": emp["name"], "time": now_disp}
+
+    if req.action == "lunch_in":
+        _update_cell(entry_id, 6, now_time)  # col 6 = lunch_in
+        return {"action": "lunch_in", "name": emp["name"], "time": now_disp}
+
+    if req.action == "clock_out":
+        ci_full = (today_row.get("clock_in") or "").strip()
+        _update_clock_out(entry_id, now_time, ci_full)
+        return {"action": "clock_out", "name": emp["name"], "time": now_disp}
+
+    raise HTTPException(status_code=400, detail=f"Unknown action: {req.action!r}")
 
 
 @app.get("/timesheet")
@@ -1804,7 +1888,8 @@ def export_timesheet():
     hdr_fill    = PatternFill("solid", fgColor="1E40AF")
     yellow_fill = PatternFill("solid", fgColor="FEF9C3")
 
-    for col, h in enumerate(["Employee Name", "Date", "Clock In", "Clock Out", "Hours Worked"], 1):
+    headers = ["Employee Name", "Date", "Clock In", "Lunch Out", "Lunch In", "Clock Out", "Hours Worked", "Notes"]
+    for col, h in enumerate(headers, 1):
         c = ws.cell(row=1, column=col, value=h)
         c.font      = Font(bold=True, color="FFFFFF")
         c.fill      = hdr_fill
@@ -1813,17 +1898,21 @@ def export_timesheet():
     for ri, e in enumerate(entries, 2):
         hours = _calc_hours(e)
         row = [
-            e.get("employee_name", ""), _row_date(e),
-            _fmt_clock(e["clock_in"])  if e.get("clock_in")  else "",
-            _fmt_clock(e["clock_out"]) if e.get("clock_out") else "",
+            e.get("employee_name", ""),
+            _row_date(e),
+            _fmt_clock(e["clock_in"])    if e.get("clock_in")    else "",
+            _fmt_clock(e["lunch_out"])   if e.get("lunch_out")   else "",
+            _fmt_clock(e["lunch_in"])    if e.get("lunch_in")    else "",
+            _fmt_clock(e["clock_out"])   if e.get("clock_out")   else "",
             hours if hours is not None else "",
+            e.get("notes", "") or "",
         ]
         for col, val in enumerate(row, 1):
             c = ws.cell(row=ri, column=col, value=val)
             if not e.get("clock_out"):
                 c.fill = yellow_fill
 
-    for col, w in zip("ABCDE", [22, 12, 12, 12, 14]):
+    for col, w in zip("ABCDEFGH", [22, 12, 12, 11, 11, 12, 14, 18]):
         ws.column_dimensions[col].width = w
 
     buf = io.BytesIO()
