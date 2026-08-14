@@ -259,15 +259,13 @@ export default function Timesheet() {
                   <li key={emp.id} className="px-6 py-4 flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-800">{emp.name}</span>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                      emp.status === 'clocked_in'          ? 'bg-green-100 text-green-700' :
-                      emp.status === 'on_lunch'            ? 'bg-amber-100 text-amber-700' :
-                      emp.status === 'returned_from_lunch' ? 'bg-blue-100 text-blue-700'   :
-                                                             'bg-gray-100 text-gray-500'
+                      (emp.status === 'clocked_in' || emp.status === 'returned_from_lunch') ? 'bg-green-100 text-green-700' :
+                      emp.status === 'on_lunch' ? 'bg-amber-100 text-amber-700' :
+                      'bg-gray-100 text-gray-500'
                     }`}>
-                      {emp.status === 'clocked_in'          ? 'Clocked In'   :
-                       emp.status === 'on_lunch'            ? 'On Lunch'     :
-                       emp.status === 'returned_from_lunch' ? 'Back from Lunch' :
-                                                              'Clocked Out'}
+                      {(emp.status === 'clocked_in' || emp.status === 'returned_from_lunch') ? 'Clocked In' :
+                       emp.status === 'on_lunch' ? 'On Lunch' :
+                       'Clocked Out'}
                     </span>
                   </li>
                 ))}
