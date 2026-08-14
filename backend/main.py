@@ -1788,7 +1788,7 @@ def get_timesheet():
     entries = _load_timesheets()
     result  = []
     for e in sorted(entries, key=lambda x: (_row_date(x), x.get("employee_name", ""))):
-        result.append({**e, "hours": _calc_hours(e)})
+        result.append({**e, "date": _row_date(e), "hours": _calc_hours(e)})
     return {"entries": result}
 
 
