@@ -1340,15 +1340,12 @@ def _row_date(t: dict) -> str:
 
 
 def _today_status(employee_id: str, timesheets: list[dict]) -> str:
-    today = date.today().isoformat()
-    entries = [
-        t for t in timesheets
-        if t.get("employee_id") == employee_id and _row_date(t) == today
-    ]
-    if not entries:
-        return "Out"
-    last = max(entries, key=lambda x: x.get("clock_in") or "")
-    return "In" if not last.get("clock_out") else "Out"
+    open_shift = next(
+        (t for t in timesheets
+         if t.get("employee_id") == employee_id and _is_blank(t.get("clock_out"))),
+        None,
+    )
+    return "In" if open_shift else "Out"
 
 
 def _fmt_clock(time_str: str) -> str:
