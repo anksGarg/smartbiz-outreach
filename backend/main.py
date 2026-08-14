@@ -10,6 +10,9 @@ import struct
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+_TZ = ZoneInfo("America/Los_Angeles")
 from pathlib import Path
 
 import anthropic
@@ -1461,7 +1464,7 @@ def clock_event(token: str):
         )
 
     timesheets    = _load_timesheets()
-    now_dt        = datetime.now()
+    now_dt        = datetime.now(_TZ)
     today         = now_dt.date().isoformat()
     now_time      = now_dt.strftime("%H:%M")
     now_disp      = _fmt_clock(now_time)
@@ -1750,7 +1753,7 @@ def timeclock_action(req: TimeclockActionRequest):
         raise HTTPException(status_code=404, detail="Employee not found.")
 
     timesheets     = _load_timesheets()
-    now_dt         = datetime.now()
+    now_dt         = datetime.now(_TZ)
     today          = now_dt.date().isoformat()
     now_time       = now_dt.strftime("%H:%M")
     now_disp       = _fmt_clock(now_time)
