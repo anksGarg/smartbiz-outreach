@@ -1797,7 +1797,7 @@ def export_timesheet():
     import openpyxl
     from openpyxl.styles import Alignment, Font, PatternFill
 
-    entries     = sorted(_load_timesheets(), key=lambda x: (x["employee_name"], x["date"]))
+    entries     = sorted(_load_timesheets(), key=lambda x: (x.get("employee_name", ""), _row_date(x)))
     wb          = openpyxl.Workbook()
     ws          = wb.active
     ws.title    = "Timesheet"
