@@ -347,13 +347,13 @@ export default function Timesheet() {
                 <button
                   onClick={() => { fetchTimesheet(); fetchEmployees() }}
                   disabled={loadingTs}
-                  className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                  className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-40 transition-colors"
                 >
                   {loadingTs ? 'Refreshing…' : 'Refresh'}
                 </button>
                 <a
                   href={`${API}/timesheet/export`} download
-                  className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors inline-block whitespace-nowrap"
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors inline-block whitespace-nowrap"
                 >
                   ↓ Export to Excel
                 </a>
