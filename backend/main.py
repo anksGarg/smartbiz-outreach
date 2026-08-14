@@ -1390,7 +1390,7 @@ def _fmt_clock(time_str: str) -> str:
 
 
 def _calc_hours(e: dict) -> float | None:
-    """Calculate hours worked. clock_in='YYYY-MM-DD HH:MM', clock_out='HH:MM'."""
+    """Calculate gross hours worked (clock_out - clock_in). clock_in='YYYY-MM-DD HH:MM', clock_out='HH:MM'."""
     ci_str = (e.get("clock_in") or "").strip()
     co_str = (e.get("clock_out") or "").strip()
     if not (ci_str and co_str):
@@ -1401,6 +1401,23 @@ def _calc_hours(e: dict) -> float | None:
         if co < ci:
             co += timedelta(days=1)
         return round((co - ci).total_seconds() / 3600, 2)
+    except Exception:
+        return None
+
+
+def _calc_lunch(e: dict) -> int | None:
+    """Calculate lunch duration in minutes from lunch_out and lunch_in (both 'HH:MM')."""
+    lo_str = (e.get("lunch_out") or "").strip()
+    li_str = (e.get("lunch_in")  or "").strip()
+    if not (lo_str and li_str):
+        return None
+    try:
+        date_str = _row_date(e)
+        lo = datetime.strptime(f"{date_str} {lo_str}", "%Y-%m-%d %H:%M")
+        li = datetime.strptime(f"{date_str} {li_str}", "%Y-%m-%d %H:%M")
+        if li < lo:
+            li += timedelta(days=1)
+        return int((li - lo).total_seconds() / 60)
     except Exception:
         return None
 
@@ -1872,7 +1889,7 @@ def get_timesheet():
     entries = _load_timesheets()
     result  = []
     for e in sorted(entries, key=lambda x: (_row_date(x), x.get("employee_name", ""))):
-        result.append({**e, "date": _row_date(e), "hours": _calc_hours(e)})
+        result.append({**e, "date": _row_date(e), "hours": _calc_hours(e), "lunch_minutes": _calc_lunch(e)})
     return {"entries": result}
 
 
@@ -1888,7 +1905,7 @@ def export_timesheet():
     hdr_fill    = PatternFill("solid", fgColor="1E40AF")
     yellow_fill = PatternFill("solid", fgColor="FEF9C3")
 
-    headers = ["Employee Name", "Date", "Clock In", "Lunch Out", "Lunch In", "Clock Out", "Hours Worked", "Notes"]
+    headers = ["Employee Name", "Date", "Clock In", "Lunch Out", "Lunch In", "Lunch Time", "Clock Out", "Hours Worked", "Notes"]
     for col, h in enumerate(headers, 1):
         c = ws.cell(row=1, column=col, value=h)
         c.font      = Font(bold=True, color="FFFFFF")
@@ -1896,13 +1913,19 @@ def export_timesheet():
         c.alignment = Alignment(horizontal="center")
 
     for ri, e in enumerate(entries, 2):
-        hours = _calc_hours(e)
+        hours        = _calc_hours(e)
+        lunch_mins   = _calc_lunch(e)
+        lunch_str    = ""
+        if lunch_mins is not None:
+            lh, lm = divmod(lunch_mins, 60)
+            lunch_str = f"{lh}h {lm}m" if lh else f"{lm}m"
         row = [
             e.get("employee_name", ""),
             _row_date(e),
             _fmt_clock(e["clock_in"])    if e.get("clock_in")    else "",
             _fmt_clock(e["lunch_out"])   if e.get("lunch_out")   else "",
             _fmt_clock(e["lunch_in"])    if e.get("lunch_in")    else "",
+            lunch_str,
             _fmt_clock(e["clock_out"])   if e.get("clock_out")   else "",
             hours if hours is not None else "",
             e.get("notes", "") or "",
@@ -1912,7 +1935,7 @@ def export_timesheet():
             if not e.get("clock_out"):
                 c.fill = yellow_fill
 
-    for col, w in zip("ABCDEFGH", [22, 12, 12, 11, 11, 12, 14, 18]):
+    for col, w in zip("ABCDEFGHI", [22, 12, 12, 11, 11, 11, 12, 14, 18]):
         ws.column_dimensions[col].width = w
 
     buf = io.BytesIO()

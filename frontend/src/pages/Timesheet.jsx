@@ -25,6 +25,13 @@ function fmtHours(h, missing) {
   return mins ? `${hrs}h ${mins}m` : `${hrs}h`
 }
 
+function fmtMinutes(m) {
+  if (m == null) return '—'
+  const h = Math.floor(m / 60)
+  const min = m % 60
+  return h ? (min ? `${h}h ${min}m` : `${h}h`) : `${min}m`
+}
+
 function todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -366,6 +373,9 @@ export default function Timesheet() {
                       <th className="px-4 py-3 font-medium">Employee</th>
                       <th className="px-4 py-3 font-medium">Date</th>
                       <th className="px-4 py-3 font-medium">Clock In</th>
+                      <th className="px-4 py-3 font-medium">Lunch Out</th>
+                      <th className="px-4 py-3 font-medium">Lunch In</th>
+                      <th className="px-4 py-3 font-medium">Lunch Time</th>
                       <th className="px-4 py-3 font-medium">Clock Out</th>
                       <th className="px-4 py-3 font-medium">Hours Worked</th>
                     </tr>
@@ -380,6 +390,9 @@ export default function Timesheet() {
                           <td className="px-4 py-3 font-medium text-gray-800">{entry.employee_name}</td>
                           <td className="px-4 py-3 text-gray-600">{entry.date}</td>
                           <td className="px-4 py-3 text-gray-600">{fmtTime(entry.clock_in)}</td>
+                          <td className="px-4 py-3 text-gray-600">{entry.lunch_out ? fmtTime(entry.lunch_out) : '—'}</td>
+                          <td className="px-4 py-3 text-gray-600">{entry.lunch_in  ? fmtTime(entry.lunch_in)  : '—'}</td>
+                          <td className="px-4 py-3 text-gray-600">{fmtMinutes(entry.lunch_minutes)}</td>
                           <td className="px-4 py-3 text-gray-600">{missing ? '—' : fmtTime(entry.clock_out)}</td>
                           <td className="px-4 py-3">
                             {missing ? (
