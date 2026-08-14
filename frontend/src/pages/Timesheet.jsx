@@ -400,7 +400,9 @@ export default function Timesheet() {
                                 Still working
                               </span>
                             ) : (
-                              <span className="text-gray-600">{fmtHours(entry.hours, false)}</span>
+                              <span className="text-gray-600">
+                                {fmtHours(entry.work_hours ?? entry.hours, false)}
+                              </span>
                             )}
                           </td>
                         </tr>

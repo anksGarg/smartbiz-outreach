@@ -1281,11 +1281,11 @@ def _load_timesheets() -> list[dict]:
 
 
 def _append_timesheet(entry: dict) -> None:
-    # Columns: id | employee_id | employee_name | clock_in | lunch_out | lunch_in | clock_out | hours_worked | notes
+    # Columns: id | employee_id | employee_name | clock_in | lunch_out | lunch_in | clock_out | lunch_hours | work_hours | notes
     try:
         _timesheets_ws().append_row(
             [entry["id"], entry["employee_id"], entry["employee_name"],
-             entry["clock_in"], "", "", "", "", ""],
+             entry["clock_in"], "", "", "", "", "", ""],
             value_input_option="RAW",
         )
     except HTTPException:
@@ -1307,23 +1307,42 @@ def _update_cell(entry_id: str, col: int, value) -> None:
         raise HTTPException(status_code=503, detail=f"Could not update Timesheets sheet: {exc}")
 
 
-def _update_clock_out(entry_id: str, clock_out: str, clock_in_full: str) -> None:
-    """Write clock_out (col 7) and calculated hours_worked (col 8) for a row found by id."""
-    hours_worked = ""
+def _compute_hours(clock_in_full: str, clock_out_time: str,
+                   lunch_out: str = "", lunch_in: str = "") -> tuple[float, float]:
+    """Return (lunch_hours, work_hours) as decimal hours using HH:MM precision (no seconds)."""
+    date_str  = clock_in_full[:10]
+    ci = datetime.strptime(clock_in_full.strip(), "%Y-%m-%d %H:%M")
+    co = datetime.strptime(f"{date_str} {clock_out_time.strip()}", "%Y-%m-%d %H:%M")
+    if co < ci:
+        co += timedelta(days=1)
+    gross_min = int((co - ci).total_seconds() // 60)
+
+    lunch_min = 0
+    if lunch_out.strip() and lunch_in.strip():
+        lo = datetime.strptime(f"{date_str} {lunch_out.strip()}", "%Y-%m-%d %H:%M")
+        li = datetime.strptime(f"{date_str} {lunch_in.strip()}", "%Y-%m-%d %H:%M")
+        if li < lo:
+            li += timedelta(days=1)
+        lunch_min = int((li - lo).total_seconds() // 60)
+
+    return round(lunch_min / 60, 2), round((gross_min - lunch_min) / 60, 2)
+
+
+def _update_clock_out(entry_id: str, clock_out: str, clock_in_full: str,
+                      lunch_out: str = "", lunch_in: str = "") -> None:
+    """Write clock_out (col 7), lunch_hours (col 8), work_hours (col 9) for a row found by id."""
+    lunch_hours, work_hours = 0.0, 0.0
     try:
-        ci = datetime.strptime(clock_in_full.strip(), "%Y-%m-%d %H:%M")
-        co = datetime.strptime(f"{clock_in_full[:10]} {clock_out.strip()}", "%Y-%m-%d %H:%M")
-        if co < ci:
-            co += timedelta(days=1)  # overnight shift
-        hours_worked = round((co - ci).total_seconds() / 3600, 2)
+        lunch_hours, work_hours = _compute_hours(clock_in_full, clock_out, lunch_out, lunch_in)
     except Exception:
         pass
     try:
         ws   = _timesheets_ws()
         cell = ws.find(entry_id, in_column=1)
         if cell:
-            ws.update_cell(cell.row, 7, clock_out)      # col 7 = clock_out
-            ws.update_cell(cell.row, 8, hours_worked)   # col 8 = hours_worked
+            ws.update_cell(cell.row, 7, clock_out)    # col 7 = clock_out
+            ws.update_cell(cell.row, 8, lunch_hours)  # col 8 = lunch_hours
+            ws.update_cell(cell.row, 9, work_hours)   # col 9 = work_hours
     except HTTPException:
         raise
     except Exception as exc:
@@ -1477,8 +1496,20 @@ def list_employees():
         for t in stale:
             cell = ts_ws.find(t.get("id", ""), in_column=1)
             if cell:
-                ts_ws.update_cell(cell.row, 7, "23:59")              # col 7 = clock_out
-                ts_ws.update_cell(cell.row, 9, "missed clock-out")   # col 9 = notes
+                co_time = "23:59"
+                ci_full = (t.get("clock_in")  or "").strip()
+                lo_str  = (t.get("lunch_out") or "").strip()
+                li_str  = (t.get("lunch_in")  or "").strip()
+                lunch_h, work_h = 0.0, 0.0
+                try:
+                    if ci_full:
+                        lunch_h, work_h = _compute_hours(ci_full, co_time, lo_str, li_str)
+                except Exception:
+                    pass
+                ts_ws.update_cell(cell.row, 7,  co_time)
+                ts_ws.update_cell(cell.row, 8,  lunch_h)
+                ts_ws.update_cell(cell.row, 9,  work_h)
+                ts_ws.update_cell(cell.row, 10, "missed clock-out")
         timesheets = _load_timesheets()  # reload with closed entries
 
     result = []
@@ -1877,8 +1908,10 @@ def timeclock_action(req: TimeclockActionRequest):
         return {"action": "lunch_in", "name": emp["name"], "time": now_disp}
 
     if req.action == "clock_out":
-        ci_full = (today_row.get("clock_in") or "").strip()
-        _update_clock_out(entry_id, now_time, ci_full)
+        ci_full   = (today_row.get("clock_in")  or "").strip()
+        lunch_out = (today_row.get("lunch_out") or "").strip()
+        lunch_in  = (today_row.get("lunch_in")  or "").strip()
+        _update_clock_out(entry_id, now_time, ci_full, lunch_out, lunch_in)
         return {"action": "clock_out", "name": emp["name"], "time": now_disp}
 
     raise HTTPException(status_code=400, detail=f"Unknown action: {req.action!r}")
@@ -1905,7 +1938,7 @@ def export_timesheet():
     hdr_fill    = PatternFill("solid", fgColor="1E40AF")
     yellow_fill = PatternFill("solid", fgColor="FEF9C3")
 
-    headers = ["Employee Name", "Date", "Clock In", "Lunch Out", "Lunch In", "Lunch Time", "Clock Out", "Hours Worked", "Notes"]
+    headers = ["Employee Name", "Date", "Clock In", "Lunch Out", "Lunch In", "Lunch Time", "Clock Out", "Lunch Hours", "Work Hours", "Notes"]
     for col, h in enumerate(headers, 1):
         c = ws.cell(row=1, column=col, value=h)
         c.font      = Font(bold=True, color="FFFFFF")
@@ -1913,21 +1946,21 @@ def export_timesheet():
         c.alignment = Alignment(horizontal="center")
 
     for ri, e in enumerate(entries, 2):
-        hours        = _calc_hours(e)
-        lunch_mins   = _calc_lunch(e)
-        lunch_str    = ""
+        lunch_mins = _calc_lunch(e)
+        lunch_str  = ""
         if lunch_mins is not None:
             lh, lm = divmod(lunch_mins, 60)
             lunch_str = f"{lh}h {lm}m" if lh else f"{lm}m"
         row = [
             e.get("employee_name", ""),
             _row_date(e),
-            _fmt_clock(e["clock_in"])    if e.get("clock_in")    else "",
-            _fmt_clock(e["lunch_out"])   if e.get("lunch_out")   else "",
-            _fmt_clock(e["lunch_in"])    if e.get("lunch_in")    else "",
+            _fmt_clock(e["clock_in"])   if e.get("clock_in")   else "",
+            _fmt_clock(e["lunch_out"])  if e.get("lunch_out")  else "",
+            _fmt_clock(e["lunch_in"])   if e.get("lunch_in")   else "",
             lunch_str,
-            _fmt_clock(e["clock_out"])   if e.get("clock_out")   else "",
-            hours if hours is not None else "",
+            _fmt_clock(e["clock_out"])  if e.get("clock_out")  else "",
+            e.get("lunch_hours") or "",
+            e.get("work_hours")  or "",
             e.get("notes", "") or "",
         ]
         for col, val in enumerate(row, 1):
@@ -1935,7 +1968,7 @@ def export_timesheet():
             if not e.get("clock_out"):
                 c.fill = yellow_fill
 
-    for col, w in zip("ABCDEFGHI", [22, 12, 12, 11, 11, 11, 12, 14, 18]):
+    for col, w in zip("ABCDEFGHIJ", [22, 12, 12, 11, 11, 11, 12, 11, 11, 18]):
         ws.column_dimensions[col].width = w
 
     buf = io.BytesIO()
