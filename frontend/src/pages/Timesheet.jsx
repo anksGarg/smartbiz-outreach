@@ -52,7 +52,7 @@ export default function Timesheet() {
   const [entries,    setEntries]    = useState([])
   const [loadingTs,  setLoadingTs]  = useState(true)
   const [filterFrom, setFilterFrom] = useState(todayStr())
-  const [filterTo,   setFilterTo]   = useState('')
+  const [filterTo,   setFilterTo]   = useState(todayStr())
   const [filterEmp,  setFilterEmp]  = useState('')
 
   useEffect(() => { fetchCompanyQR(); fetchEmployees(); fetchTimesheet() }, [])
