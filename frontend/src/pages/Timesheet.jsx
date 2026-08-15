@@ -381,6 +381,7 @@ export default function Timesheet() {
                       <th className="px-4 py-3 font-medium">Lunch Time</th>
                       <th className="px-4 py-3 font-medium">Clock Out</th>
                       <th className="px-4 py-3 font-medium">Hours Worked</th>
+                      <th className="px-4 py-3 font-medium">Notes</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -408,6 +409,7 @@ export default function Timesheet() {
                               </span>
                             )}
                           </td>
+                          <td className="px-4 py-3 text-gray-500 text-xs">{entry.notes || '—'}</td>
                         </tr>
                       )
                     })}
