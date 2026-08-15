@@ -1782,7 +1782,7 @@ function showAction(emp){
     statusEl.textContent='Clocked in at '+fmtHHMM(emp.clock_in_time);
     var row=document.createElement('div');
     row.className='btn-row';
-    row.appendChild(makeBtn('Clock Out','btn-out',function(){doAction(emp,'clock_out')}));
+    row.appendChild(makeBtn('🏁 Done for the day','btn-out',function(){doAction(emp,'clock_out')}));
     row.appendChild(makeBtn('🍔 Lunch','btn-lunch',function(){doAction(emp,'lunch_out')}));
     btns.appendChild(row);
   } else if(st==='on_lunch'){
@@ -1790,11 +1790,11 @@ function showAction(emp){
     var row=document.createElement('div');
     row.className='btn-row';
     row.appendChild(makeBtn('Lunch Clock In','btn-in',function(){doAction(emp,'lunch_in')}));
-    row.appendChild(makeBtn('Clock Out','btn-out',function(){doAction(emp,'clock_out')}));
+    row.appendChild(makeBtn('🏁 Done for the day','btn-out',function(){doAction(emp,'clock_out')}));
     btns.appendChild(row);
   } else if(st==='returned_from_lunch'){
     statusEl.textContent='Clocked in at '+fmtHHMM(emp.clock_in_time);
-    btns.appendChild(makeBtn('Clock Out','btn-out',function(){doAction(emp,'clock_out')}));
+    btns.appendChild(makeBtn('🏁 Done for the day','btn-out',function(){doAction(emp,'clock_out')}));
   } else if(st==='clocked_out'){
     statusEl.textContent='';
     var d=document.createElement('div');
