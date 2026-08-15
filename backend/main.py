@@ -1777,7 +1777,7 @@ function showAction(emp){
   var st=emp.status;
   if(st==='not_clocked_in'){
     statusEl.textContent='You haven’t clocked in yet today.';
-    btns.appendChild(makeBtn('Clock In','btn-in',function(){doAction(emp,'clock_in')}));
+    btns.appendChild(makeBtn('🏠 Start the Work Day','btn-in',function(){doAction(emp,'clock_in')}));
   } else if(st==='clocked_in'){
     statusEl.textContent='Clocked in at '+fmtHHMM(emp.clock_in_time);
     var row=document.createElement('div');
