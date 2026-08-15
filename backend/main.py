@@ -1789,7 +1789,7 @@ function showAction(emp){
     statusEl.textContent='On lunch since '+fmtHHMM(emp.lunch_out_time);
     var row=document.createElement('div');
     row.className='btn-row';
-    row.appendChild(makeBtn('Lunch Clock In','btn-in',function(){doAction(emp,'lunch_in')}));
+    row.appendChild(makeBtn('Back from Lunch','btn-in',function(){doAction(emp,'lunch_in')}));
     row.appendChild(makeBtn('🏁 Done for the day','btn-out',function(){doAction(emp,'clock_out')}));
     btns.appendChild(row);
   } else if(st==='returned_from_lunch'){
