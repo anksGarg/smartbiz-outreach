@@ -1329,8 +1329,8 @@ def _compute_hours(clock_in_full: str, clock_out_time: str,
 
 
 def _update_clock_out(entry_id: str, clock_out: str, clock_in_full: str,
-                      lunch_out: str = "", lunch_in: str = "") -> None:
-    """Write clock_out (col 7), lunch_hours (col 8), work_hours (col 9) for a row found by id."""
+                      lunch_out: str = "", lunch_in: str = "", notes: str = "") -> None:
+    """Write clock_out (col 7), lunch_hours (col 8), work_hours (col 9), and optionally notes (col 10)."""
     lunch_hours, work_hours = 0.0, 0.0
     try:
         lunch_hours, work_hours = _compute_hours(clock_in_full, clock_out, lunch_out, lunch_in)
@@ -1343,6 +1343,8 @@ def _update_clock_out(entry_id: str, clock_out: str, clock_in_full: str,
             ws.update_cell(cell.row, 7, clock_out)    # col 7 = clock_out
             ws.update_cell(cell.row, 8, lunch_hours)  # col 8 = lunch_hours
             ws.update_cell(cell.row, 9, work_hours)   # col 9 = work_hours
+            if notes:
+                ws.update_cell(cell.row, 10, notes)   # col 10 = notes
     except HTTPException:
         raise
     except Exception as exc:
@@ -1785,7 +1787,11 @@ function showAction(emp){
     btns.appendChild(row);
   } else if(st==='on_lunch'){
     statusEl.textContent='On lunch since '+fmtHHMM(emp.lunch_out_time);
-    btns.appendChild(makeBtn('Back from Lunch','btn-in',function(){doAction(emp,'lunch_in')}));
+    var row=document.createElement('div');
+    row.className='btn-row';
+    row.appendChild(makeBtn('Lunch Clock In','btn-in',function(){doAction(emp,'lunch_in')}));
+    row.appendChild(makeBtn('Clock Out','btn-out',function(){doAction(emp,'clock_out')}));
+    btns.appendChild(row);
   } else if(st==='returned_from_lunch'){
     statusEl.textContent='Clocked in at '+fmtHHMM(emp.clock_in_time);
     btns.appendChild(makeBtn('Clock Out','btn-out',function(){doAction(emp,'clock_out')}));
@@ -1923,7 +1929,9 @@ def timeclock_action(req: TimeclockActionRequest):
         ci_full   = (open_row.get("clock_in")  or "").strip()
         lunch_out = (open_row.get("lunch_out") or "").strip()
         lunch_in  = (open_row.get("lunch_in")  or "").strip()
-        _update_clock_out(entry_id, now_time, ci_full, lunch_out, lunch_in)
+        # Clocked out while still on lunch — flag for manual review, treat lunch as 0
+        notes = "missed lunch clock-in" if (lunch_out and not lunch_in) else ""
+        _update_clock_out(entry_id, now_time, ci_full, lunch_out, "", notes=notes)
         return {"action": "clock_out", "name": emp["name"], "time": now_disp}
 
     raise HTTPException(status_code=400, detail=f"Unknown action: {req.action!r}")
