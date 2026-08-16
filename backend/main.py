@@ -1701,6 +1701,9 @@ header p{font-size:.8rem;opacity:.7;margin-top:2px}
 <script>
 var currentEmp=null;
 
+// Scan mode: true on every fresh page load; false after any successful action
+sessionStorage.setItem('fromScan','true');
+
 // Live clock — updates every second
 function updateClock(){
   var now=new Date();
@@ -1857,32 +1860,64 @@ function showAction(emp){
   var btns=document.getElementById('a-btns');
   btns.innerHTML='';
 
+  var scan=sessionStorage.getItem('fromScan')!=='false';
   var st=emp.status;
+
   if(st==='not_clocked_in'){
-    statusEl.textContent='Not clocked in yet / No registrado aún';
+    // Both modes: Clock In
+    statusEl.textContent='Not clocked in yet / No registrado aun';
     btns.appendChild(makeBtn('🏠 Start the Work Day','Registrar Entrada','btn-in',function(){doAction(emp,'clock_in')}));
+
   } else if(st==='clocked_in'){
     statusEl.textContent='Clocked in at / Entrada a las '+fmtHHMM(emp.clock_in_time);
-    btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
-    btns.appendChild(makeBtn('🍔 Lunch Out','Salida a Almuerzo','btn-lunch',function(){doAction(emp,'lunch_out')}));
+    if(scan){
+      // Scan: employee is done for the day — Clock Out
+      btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
+    } else {
+      // Stay: employee is staying on page — offer Lunch Out
+      btns.appendChild(makeBtn('🍔 Going for Lunch','Salida a Almuerzo','btn-lunch',function(){doAction(emp,'lunch_out')}));
+    }
+
   } else if(st==='on_lunch'){
     statusEl.textContent='On lunch since / En almuerzo desde '+fmtHHMM(emp.lunch_out_time);
-    btns.appendChild(makeBtn('🥪 Back from Lunch','Regreso de Almuerzo','btn-in',function(){doAction(emp,'lunch_in')}));
-    btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
+    if(scan){
+      // Scan: employee skipped lunch clock-in — Clock Out (backend sets missed lunch note)
+      btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
+    } else {
+      // Stay: employee just got back from lunch
+      btns.appendChild(makeBtn('🥪 Back from Lunch','Regreso de Almuerzo','btn-in',function(){doAction(emp,'lunch_in')}));
+    }
+
   } else if(st==='returned_from_lunch'){
+    // Both modes: Done for the Day
     statusEl.textContent='Clocked in at / Entrada a las '+fmtHHMM(emp.clock_in_time);
     btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
-  } else {
-    statusEl.textContent='';
-    var d=document.createElement('div');
-    d.className='done-today';
-    d.innerHTML='🎉 Done for today! / ¡Fin del día!';
-    btns.appendChild(d);
   }
 
   document.getElementById('switch-link').textContent='Not '+emp.name+'? Switch / Cambiar empleado';
   document.getElementById('switch-link').onclick=function(){
     localStorage.removeItem('tc_employee');
+    sessionStorage.setItem('fromScan','true');
+    currentEmp=null;
+    loadAll();
+  };
+  show('s-action');
+}
+
+function showDoneForToday(){
+  if(!currentEmp){loadAll();return;}
+  document.getElementById('a-name').textContent=currentEmp.name;
+  document.getElementById('a-status').textContent='';
+  var btns=document.getElementById('a-btns');
+  btns.innerHTML='';
+  var d=document.createElement('div');
+  d.className='done-today';
+  d.innerHTML="🎉 You're clocked out. See you tomorrow! / ¡Hasta manana!";
+  btns.appendChild(d);
+  document.getElementById('switch-link').textContent='Not '+currentEmp.name+'? Switch / Cambiar empleado';
+  document.getElementById('switch-link').onclick=function(){
+    localStorage.removeItem('tc_employee');
+    sessionStorage.setItem('fromScan','true');
     currentEmp=null;
     loadAll();
   };
@@ -1911,10 +1946,13 @@ async function doAction(emp,actionType){
 }
 
 function showFlash(d){
+  // Any completed action switches to stay mode
+  sessionStorage.setItem('fromScan','false');
+
   var map={
-    clock_in: {icon:'👋',msg:'Hi, '+d.name+'! / ¡Hola!',        sub:'Clocked in at / Entrada a las '+d.time},
-    clock_out:{icon:'✅',msg:'Goodbye! / ¡Hasta luego, '+d.name+'!',sub:'Clocked out at / Salida a las '+d.time},
-    lunch_out:{icon:'🍔',msg:'Enjoy lunch! / ¡Buen provecho!',    sub:'Lunch out at / Almuerzo desde '+d.time},
+    clock_in: {icon:'👋',msg:'Hi, '+d.name+'! / Hola!',         sub:'Clocked in at / Entrada a las '+d.time},
+    clock_out:{icon:'✅',msg:'Goodbye! / Hasta luego, '+d.name+'!',sub:'Clocked out at / Salida a las '+d.time},
+    lunch_out:{icon:'🍔',msg:'Enjoy lunch! / Buen provecho!',     sub:'Lunch out at / Almuerzo desde '+d.time},
     lunch_in: {icon:'💼',msg:'Welcome back, '+d.name+'!',         sub:'Back at / Regreso a las '+d.time}
   };
   var m=map[d.action]||{icon:'✅',msg:d.name,sub:d.time};
@@ -1924,6 +1962,10 @@ function showFlash(d){
   document.getElementById('flash').className='active';
   setTimeout(async function(){
     document.getElementById('flash').className='';
+    if(d.action==='clock_out'){
+      showDoneForToday();
+      return;
+    }
     if(currentEmp){
       try{
         var emps=await fetchAll();
