@@ -1739,11 +1739,17 @@ function show(id){
 }
 
 async function fetchAll(){
+  console.log(‘[tc] fetchAll: starting fetch /employees’);
   var ctrl=new AbortController();
-  var tid=setTimeout(function(){ctrl.abort();},15000);
+  var tid=setTimeout(function(){
+    console.log(‘[tc] fetchAll: 10s timeout reached, aborting’);
+    ctrl.abort();
+  },10000);
   try{
     var r=await fetch(‘/employees’,{signal:ctrl.signal});
+    console.log(‘[tc] fetchAll: response received, status=’+r.status);
     var d=await r.json();
+    console.log(‘[tc] fetchAll: parsed JSON, employee count=’+(d.employees||[]).length);
     return d.employees||[];
   }finally{
     clearTimeout(tid);
@@ -1758,9 +1764,16 @@ function makeBtn(label,sub,cls,handler){
   return b;
 }
 
+function showConnectError(){
+  var lm=document.getElementById(‘loading-msg’);
+  lm.style.display=’block’;
+  lm.innerHTML=’Could not connect. Please check your connection and try again.<br>No se pudo conectar. Por favor verifique su conexión e intente de nuevo.<br><button onclick="loadAll()" style="margin-top:16px;padding:14px 32px;background:#1e3a5f;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer">Retry / Reintentar</button>’;
+}
+
 async function init(){
   var saved=null;
   try{saved=JSON.parse(localStorage.getItem(‘tc_employee’))}catch(e){}
+  console.log(‘[tc] init: localStorage saved=’+(saved?saved.name:’none’));
   if(saved&&saved.id){
     show(‘s-action’);
     document.getElementById(‘a-name’).textContent=saved.name;
@@ -1770,14 +1783,21 @@ async function init(){
     try{
       var emps=await fetchAll();
       var emp=emps.find(function(e){return e.id===saved.id});
+      console.log(‘[tc] init: saved employee found in list=’+(!!emp));
       if(emp){showAction(emp);return;}
       localStorage.removeItem(‘tc_employee’);
-    }catch(e){loadAll();return;}
+    }catch(e){
+      console.log(‘[tc] init: fetchAll error=’+e);
+      show(‘s-who’);
+      showConnectError();
+      return;
+    }
   }
   loadAll();
 }
 
 async function loadAll(){
+  console.log(‘[tc] loadAll: starting’);
   show(‘s-who’);
   document.getElementById(‘loading-msg’).style.display=’block’;
   document.getElementById(‘who-heading’).style.display=’none’;
@@ -1785,10 +1805,11 @@ async function loadAll(){
   document.getElementById(‘emp-list’).innerHTML=’’;
   try{
     var emps=await fetchAll();
+    console.log(‘[tc] loadAll: rendering ‘+emps.length+’ employees’);
     renderList(emps);
   }catch(e){
-    var lm=document.getElementById(‘loading-msg’);
-    lm.innerHTML=’Could not connect. / No se pudo conectar.<br><button onclick="loadAll()" style="margin-top:16px;padding:14px 32px;background:#1e3a5f;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer">Retry / Reintentar</button>’;
+    console.log(‘[tc] loadAll: fetchAll error=’+e);
+    showConnectError();
   }
 }
 
