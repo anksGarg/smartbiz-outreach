@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: smartbiz-outreach
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: RLIS_DATA_DIR
+        value: /data
+    disks:
+      - name: rlis-data
+        mountPath: /data
+        sizeGB: 10

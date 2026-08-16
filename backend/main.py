@@ -343,8 +343,10 @@ _COMMERCIAL_QUERIES = [
     "commercial property management",
 ]
 
-_RLIS_DBF   = DATA_DIR / "TAXLOTS" / "taxlots_public.dbf"
-_RLIS_CACHE = DATA_DIR / "rlis_cache.csv"
+# RLIS_DATA_DIR env var lets Render's persistent disk be used without changing DATA_DIR
+_RLIS_DATA_DIR = Path(os.getenv("RLIS_DATA_DIR", str(DATA_DIR)))
+_RLIS_DBF   = _RLIS_DATA_DIR / "TAXLOTS" / "taxlots_public.dbf"
+_RLIS_CACHE = _RLIS_DATA_DIR / "rlis_cache.csv"
 
 # Oregon North State Plane (NAD83 HARN, Intl Feet) → WGS84 (lng, lat)
 _OR_PROJ = Transformer.from_crs("EPSG:2913", "EPSG:4326", always_xy=True)
