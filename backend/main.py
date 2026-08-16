@@ -1935,16 +1935,14 @@ function showFlash(d){
   },2200);
 }
 
-// Session timeout
+// Session timeout — starts when the page loads, not from QR code timestamp
 (function(){
-  var params=new URLSearchParams(location.search);
-  var t=parseInt(params.get('t')||'0',10);
+  var t=Math.floor(Date.now()/1000);
   var TIMEOUT=900;
   var bar=document.getElementById('session-bar');
   var expired=false;
 
   function remaining(){
-    if(!t)return -1;
     return TIMEOUT-(Math.floor(Date.now()/1000)-t);
   }
   function fmt(s){
@@ -1983,8 +1981,7 @@ init();
 @app.get("/timeclock/qr")
 def timeclock_qr():
     base_url = os.getenv("BASE_URL", "https://smartbiz-outreach.onrender.com")
-    t = int(datetime.now().timestamp())
-    url = f"{base_url}/timeclock?t={t}"
+    url = f"{base_url}/timeclock"
     return {"qr_code": _make_qr_b64(url), "url": url}
 
 
