@@ -1652,6 +1652,7 @@ header p{font-size:.8rem;opacity:.7;margin-top:2px}
 .btn-lunch{background:#d97706;color:#fff}
 .btn-lunch:active:not(:disabled){background:#b45309}
 .done-today{font-size:1.05rem;font-weight:600;color:#16a34a;padding:22px 24px;background:#f0fdf4;border-radius:14px;border:1.5px solid #bbf7d0;width:100%;text-align:center;line-height:1.5}
+.scan-prompt{font-size:1.05rem;font-weight:600;color:#1e3a5f;padding:22px 24px;background:#eff6ff;border-radius:14px;border:1.5px solid #bfdbfe;width:100%;text-align:center;line-height:1.6}
 .switch-link{font-size:.9rem;color:#94a3b8;cursor:pointer;padding:28px 16px;margin-top:auto;text-align:center;-webkit-tap-highlight-color:transparent;text-decoration:underline;text-underline-offset:3px}
 .switch-link:active{color:#64748b}
 .btn-sub{display:block;font-size:.82em;opacity:.8;font-weight:500;margin-top:2px}
@@ -1863,34 +1864,42 @@ function showAction(emp){
   var scan=sessionStorage.getItem('fromScan')!=='false';
   var st=emp.status;
 
+  function scanMsg(txt){
+    var p=document.createElement('div');
+    p.className='scan-prompt';
+    p.textContent=txt;
+    btns.appendChild(p);
+  }
+
   if(st==='not_clocked_in'){
-    // Both modes: Clock In
     statusEl.textContent='Not clocked in yet / No registrado aun';
-    btns.appendChild(makeBtn('🏠 Start the Work Day','Registrar Entrada','btn-in',function(){doAction(emp,'clock_in')}));
+    if(scan){
+      btns.appendChild(makeBtn('🏠 Start the Work Day','Registrar Entrada','btn-in',function(){doAction(emp,'clock_in')}));
+    } else {
+      scanMsg('Scan QR code to clock in / Escanee el codigo QR para registrar entrada');
+    }
 
   } else if(st==='clocked_in'){
     statusEl.textContent='Clocked in at / Entrada a las '+fmtHHMM(emp.clock_in_time);
+    btns.appendChild(makeBtn('🍔 Going for Lunch','Salida a Almuerzo','btn-lunch',function(){doAction(emp,'lunch_out')}));
     if(scan){
-      // Scan: employee is done for the day — Clock Out
       btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
-    } else {
-      // Stay: employee is staying on page — offer Lunch Out
-      btns.appendChild(makeBtn('🍔 Going for Lunch','Salida a Almuerzo','btn-lunch',function(){doAction(emp,'lunch_out')}));
     }
 
   } else if(st==='on_lunch'){
     statusEl.textContent='On lunch since / En almuerzo desde '+fmtHHMM(emp.lunch_out_time);
-    // Back from Lunch is always available after a rescan
     btns.appendChild(makeBtn('🥪 Back from Lunch','Regreso de Almuerzo','btn-in',function(){doAction(emp,'lunch_in')}));
     if(scan){
-      // Scan only: also offer Done for Day in case they skip clocking back in from lunch
       btns.appendChild(makeBtn('🏁 Done for the Day','Fin del dia','btn-out',function(){doAction(emp,'clock_out')}));
     }
 
   } else if(st==='returned_from_lunch'){
-    // Both modes: Done for the Day
-    statusEl.textContent='Clocked in at / Entrada a las '+fmtHHMM(emp.clock_in_time);
-    btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
+    statusEl.textContent='Back from lunch / Regreso de almuerzo';
+    if(scan){
+      btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
+    } else {
+      scanMsg('Scan QR code to clock out / Escanee el codigo QR para registrar salida');
+    }
   }
 
   document.getElementById('switch-link').textContent='Not '+emp.name+'? Switch / Cambiar empleado';
