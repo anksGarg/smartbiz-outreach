@@ -1917,6 +1917,8 @@ function showDoneForToday(){
   d.className='done-today';
   d.innerHTML="🎉 You're clocked out. See you tomorrow! / ¡Hasta manana!";
   btns.appendChild(d);
+  var emp=currentEmp;
+  btns.appendChild(makeBtn('🏠 Start the Work Day','Registrar Entrada','btn-in',function(){doAction(emp,'clock_in')}));
   document.getElementById('switch-link').textContent='Not '+currentEmp.name+'? Switch / Cambiar empleado';
   document.getElementById('switch-link').onclick=function(){
     localStorage.removeItem('tc_employee');
