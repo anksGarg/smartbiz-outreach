@@ -1708,8 +1708,11 @@ var currentEmp=null;
 // reload so the 5-minute session timer always starts fresh on every QR scan.
 window.addEventListener('pageshow',function(e){if(e.persisted){location.reload();}});
 
-// Scan mode: true on every fresh page load; false after any successful action
-sessionStorage.setItem('fromScan','true');
+// Scan mode: only set on first load in this tab (sessionStorage persists across
+// refreshes, so don't overwrite it — a refresh should not reset scan mode).
+if(sessionStorage.getItem('fromScan')===null){
+  sessionStorage.setItem('fromScan','true');
+}
 
 // Live clock — updates every second
 function updateClock(){
@@ -1986,10 +1989,16 @@ function showFlash(d){
   },2200);
 }
 
-// Session timeout — starts when the page loads, not from QR code timestamp
+// Session timeout — anchored to first-load timestamp stored in sessionStorage.
+// Refreshes reuse the stored start so the 5-minute window is not reset.
+// On expiry the stored start is cleared so the next fresh tab/QR-scan starts clean.
 (function(){
-  var t=Math.floor(Date.now()/1000);
   var TIMEOUT=300;
+  var KEY='tc_session_start';
+  if(!sessionStorage.getItem(KEY)){
+    sessionStorage.setItem(KEY,String(Math.floor(Date.now()/1000)));
+  }
+  var t=parseInt(sessionStorage.getItem(KEY),10);
   var bar=document.getElementById('session-bar');
   var expired=false;
 
@@ -2006,8 +2015,9 @@ function showFlash(d){
   function expire(){
     if(expired)return;
     expired=true;
+    sessionStorage.removeItem(KEY);  // cleared so next page load starts a fresh session
     if(bar){
-      bar.textContent='Session expired. Please scan the QR code again. / Sesión expirada. Por favor escanee el código QR de nuevo.';
+      bar.textContent='Session expired. Scan the QR code again. / Sesion expirada. Escanee el codigo QR de nuevo.';
       bar.className='expired';
     }
     disableAll();
@@ -2020,7 +2030,7 @@ function showFlash(d){
     if(bar)bar.textContent=fmt(r);
     setTimeout(tick,30000);
   }
-  if(!t){expire();}else{tick();}
+  if(!t||isNaN(t)){expire();}else{tick();}
 })();
 
 init();
