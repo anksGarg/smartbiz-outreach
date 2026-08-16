@@ -1604,51 +1604,52 @@ def timeclock_page():
 <title>Time Clock</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;min-height:100vh;display:flex;flex-direction:column}
-header{background:#1e3a5f;color:#fff;padding:20px 24px;text-align:center}
-header h1{font-size:1.25rem;font-weight:700}
-header p{font-size:.85rem;opacity:.75;margin-top:4px}
-#session-bar{padding:8px 16px;text-align:center;font-size:.82rem;font-weight:500;background:#f0fdf4;border-bottom:1px solid #bbf7d0;color:#16a34a}
+body{font-family:-apple-system,BlinkMacSystemFont,’Segoe UI’,sans-serif;background:#f8fafc;min-height:100vh;display:flex;flex-direction:column}
+header{background:#1e3a5f;color:#fff;padding:16px 24px;text-align:center}
+header h1{font-size:1.2rem;font-weight:700}
+header p{font-size:.8rem;opacity:.7;margin-top:2px}
+#session-bar{padding:9px 16px;text-align:center;font-size:.82rem;font-weight:500;background:#f0fdf4;border-bottom:1px solid #bbf7d0;color:#16a34a;min-height:36px}
 #session-bar.expired{background:#fef2f2;border-color:#fecaca;color:#dc2626}
+#error-banner{display:none;background:#fef2f2;border-bottom:2px solid #fca5a5;color:#dc2626;padding:14px 20px;text-align:center;font-size:1rem;font-weight:600;line-height:1.4}
 
-.screen{display:none;flex-direction:column;flex:1;padding:24px 16px}
+.screen{display:none;flex-direction:column;flex:1;padding:28px 20px}
 .screen.active{display:flex}
 
-/* Screen 1 — who are you */
-#s-who h2{text-align:center;font-size:1.3rem;font-weight:700;color:#1e293b;margin-bottom:8px}
-#s-who .sub{text-align:center;font-size:.9rem;color:#94a3b8;margin-bottom:28px}
-.emp-btn{width:100%;background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:22px 24px;margin-bottom:12px;font-size:1.15rem;font-weight:600;color:#1e293b;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent}
+/* Screen 1 */
+#s-who h2{text-align:center;font-size:1.3rem;font-weight:700;color:#1e293b;margin-bottom:6px}
+#s-who .sub{text-align:center;font-size:1rem;color:#94a3b8;margin-bottom:28px;line-height:1.5}
+.emp-btn{width:100%;background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:0 24px;margin-bottom:14px;font-size:1.2rem;font-weight:600;color:#1e293b;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;min-height:68px;display:flex;align-items:center}
 .emp-btn:active{background:#f1f5f9}
+.emp-btn:disabled{opacity:.45;cursor:not-allowed}
+#loading-msg{text-align:center;color:#94a3b8;padding:48px 0;font-size:1.1rem}
 
-/* Screen 2 — action */
-#s-action{align-items:center;justify-content:center;text-align:center}
-.greeting{font-size:1.1rem;color:#64748b;margin-bottom:6px;font-weight:500}
-.a-name{font-size:2.4rem;font-weight:800;color:#1e293b;margin-bottom:16px;line-height:1.1}
-.a-status{font-size:1rem;color:#64748b;margin-bottom:32px;min-height:1.5em}
-#a-btns{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:320px}
-.action-btn{width:100%;padding:22px;border-radius:16px;border:none;font-size:1.2rem;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.action-btn:disabled{opacity:.5;cursor:not-allowed}
-.btn-row{display:flex;gap:12px;width:100%}
-.btn-row .action-btn{flex:1;font-size:1rem;padding:18px 8px}
+/* Screen 2 */
+#s-action{align-items:center;text-align:center}
+.live-clock{font-size:2.4rem;font-weight:800;color:#1e3a5f;font-variant-numeric:tabular-nums;letter-spacing:.02em;margin-bottom:2px}
+.live-date{font-size:1rem;color:#94a3b8;margin-bottom:22px}
+.a-greeting{font-size:1.1rem;color:#64748b;font-weight:500}
+.a-name{font-size:2rem;font-weight:800;color:#1e293b;margin-bottom:6px;line-height:1.1}
+.a-status{font-size:1.05rem;color:#64748b;margin-bottom:28px;min-height:1.5em;line-height:1.4}
+#a-btns{display:flex;flex-direction:column;gap:14px;width:100%;max-width:400px}
+.action-btn{width:100%;min-height:68px;padding:16px 20px;border-radius:16px;border:none;font-size:1.15rem;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;line-height:1.35;text-align:center}
+.action-btn:disabled{opacity:.45;cursor:not-allowed}
 .btn-in{background:#16a34a;color:#fff}
 .btn-in:active:not(:disabled){background:#15803d}
 .btn-out{background:#dc2626;color:#fff}
 .btn-out:active:not(:disabled){background:#b91c1c}
 .btn-lunch{background:#d97706;color:#fff}
 .btn-lunch:active:not(:disabled){background:#b45309}
-.done-today{font-size:1.1rem;font-weight:600;color:#16a34a;padding:20px 24px;background:#f0fdf4;border-radius:14px;border:1.5px solid #bbf7d0;width:100%}
-.switch-link{font-size:.82rem;color:#94a3b8;cursor:pointer;padding:20px 16px;margin-top:auto;text-align:center;-webkit-tap-highlight-color:transparent;text-decoration:underline;text-underline-offset:3px}
+.done-today{font-size:1.05rem;font-weight:600;color:#16a34a;padding:22px 24px;background:#f0fdf4;border-radius:14px;border:1.5px solid #bbf7d0;width:100%;text-align:center;line-height:1.5}
+.switch-link{font-size:.9rem;color:#94a3b8;cursor:pointer;padding:28px 16px;margin-top:auto;text-align:center;-webkit-tap-highlight-color:transparent;text-decoration:underline;text-underline-offset:3px}
 .switch-link:active{color:#64748b}
+.btn-sub{display:block;font-size:.82em;opacity:.8;font-weight:500;margin-top:2px}
 
-/* Screen 3 — confirmation */
-#s-confirm{align-items:center;justify-content:center;text-align:center}
-.c-icon{font-size:72px;margin-bottom:24px}
-.c-msg{font-size:1.7rem;font-weight:700;color:#1e293b;margin-bottom:10px;line-height:1.2}
-.c-sub{font-size:1.05rem;color:#64748b;margin-bottom:48px}
-.done-btn{padding:16px 52px;border-radius:14px;border:1.5px solid #e2e8f0;background:#fff;font-size:1rem;font-weight:600;color:#475569;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.done-btn:active{background:#f1f5f9}
-
-#loading-msg{text-align:center;color:#94a3b8;padding:48px 0;font-size:1rem}
+/* Full-screen flash confirmation */
+#flash{display:none;position:fixed;inset:0;background:#16a34a;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 32px;z-index:200}
+#flash.active{display:flex}
+.flash-icon{font-size:88px;margin-bottom:24px}
+.flash-msg{font-size:1.9rem;font-weight:800;color:#fff;margin-bottom:10px;line-height:1.2}
+.flash-sub{font-size:1.1rem;color:rgba(255,255,255,.88);line-height:1.4}
 </style>
 </head>
 <body>
@@ -1657,113 +1658,137 @@ header p{font-size:.85rem;opacity:.75;margin-top:4px}
   <p>Employee Time Clock</p>
 </header>
 <div id="session-bar"></div>
+<div id="error-banner"></div>
+
+<!-- Full-screen confirmation flash -->
+<div id="flash">
+  <div class="flash-icon" id="flash-icon"></div>
+  <div class="flash-msg"  id="flash-msg"></div>
+  <div class="flash-sub"  id="flash-sub"></div>
+</div>
 
 <!-- Screen 1: Who are you? -->
 <div id="s-who" class="screen active">
   <div id="loading-msg">Loading&#8230;</div>
-  <h2 id="who-heading" style="display:none">Who are you?</h2>
-  <p class="sub" id="who-sub" style="display:none">Tap your name — we'll remember it on this device</p>
+  <h2 id="who-heading" style="display:none">Who are you? / ¿Quién eres?</h2>
+  <p class="sub" id="who-sub" style="display:none">Tap your name / Toca tu nombre</p>
   <div id="emp-list"></div>
 </div>
 
 <!-- Screen 2: Action -->
 <div id="s-action" class="screen">
-  <div class="greeting">Hi,</div>
+  <div class="live-clock" id="live-clock"></div>
+  <div class="live-date"  id="live-date"></div>
+  <div class="a-greeting">Hi / Hola,</div>
   <div class="a-name" id="a-name"></div>
   <div class="a-status" id="a-status"></div>
   <div id="a-btns"></div>
   <div class="switch-link" id="switch-link"></div>
 </div>
 
-<!-- Screen 3: Confirmation -->
-<div id="s-confirm" class="screen">
-  <div class="c-icon" id="c-icon"></div>
-  <div class="c-msg"  id="c-msg"></div>
-  <div class="c-sub"  id="c-sub"></div>
-  <button class="done-btn" id="done-btn">Done</button>
-</div>
-
 <script>
 var currentEmp=null;
 
+// Live clock — updates every second
+function updateClock(){
+  var now=new Date();
+  var h=now.getHours(),m=now.getMinutes(),s=now.getSeconds();
+  var ap=h>=12?’PM’:’AM’;var h12=h%12||12;
+  var cl=document.getElementById(‘live-clock’);
+  var dl=document.getElementById(‘live-date’);
+  if(cl)cl.textContent=h12+’:’+(m<10?’0’:’’)+m+’:’+(s<10?’0’:’’)+s+’ ‘+ap;
+  if(dl){
+    var days=[‘Sunday’,’Monday’,’Tuesday’,’Wednesday’,’Thursday’,’Friday’,’Saturday’];
+    var mos=[‘Jan’,’Feb’,’Mar’,’Apr’,’May’,’Jun’,’Jul’,’Aug’,’Sep’,’Oct’,’Nov’,’Dec’];
+    dl.textContent=days[now.getDay()]+’, ‘+mos[now.getMonth()]+’ ‘+now.getDate();
+  }
+}
+updateClock();setInterval(updateClock,1000);
+
 function fmtHHMM(s){
-  if(!s)return'';
+  if(!s)return’’;
   var m=s.match(/(\\d{1,2}):(\\d{2})/);
   if(!m)return s;
   var h=parseInt(m[1]),mn=parseInt(m[2]);
-  var ap=h>=12?'PM':'AM';h=h%12||12;
-  return h+':'+(mn<10?'0':'')+mn+' '+ap;
+  var ap=h>=12?’PM’:’AM’;h=h%12||12;
+  return h+’:’+(mn<10?’0’:’’)+mn+’ ‘+ap;
+}
+
+function showError(msg){
+  var b=document.getElementById(‘error-banner’);
+  b.innerHTML=msg;b.style.display=’block’;
+  setTimeout(function(){b.style.display=’none’;},6000);
 }
 
 function show(id){
-  ['s-who','s-action','s-confirm'].forEach(function(s){
-    document.getElementById(s).classList.toggle('active',s===id);
+  [‘s-who’,’s-action’].forEach(function(s){
+    document.getElementById(s).classList.toggle(‘active’,s===id);
   });
 }
 
 async function fetchAll(){
-  var r=await fetch('/employees');
+  var r=await fetch(‘/employees’);
   var d=await r.json();
   return d.employees||[];
 }
 
-function makeBtn(label,cls,handler){
-  var b=document.createElement('button');
-  b.className='action-btn '+cls;
-  b.textContent=label;
+function makeBtn(label,sub,cls,handler){
+  var b=document.createElement(‘button’);
+  b.className=’action-btn ‘+cls;
+  b.innerHTML=label+(sub?’<span class="btn-sub">’+sub+’</span>’:’’);
   b.onclick=handler;
   return b;
 }
 
 async function init(){
   var saved=null;
-  try{saved=JSON.parse(localStorage.getItem('tc_employee'))}catch(e){}
+  try{saved=JSON.parse(localStorage.getItem(‘tc_employee’))}catch(e){}
   if(saved&&saved.id){
-    show('s-action');
-    document.getElementById('a-name').textContent=saved.name;
-    document.getElementById('a-status').textContent='Loading…';
-    document.getElementById('a-btns').innerHTML='';
-    document.getElementById('switch-link').textContent='';
+    show(‘s-action’);
+    document.getElementById(‘a-name’).textContent=saved.name;
+    document.getElementById(‘a-status’).textContent=’Loading…’;
+    document.getElementById(‘a-btns’).innerHTML=’’;
+    document.getElementById(‘switch-link’).textContent=’’;
     try{
       var emps=await fetchAll();
       var emp=emps.find(function(e){return e.id===saved.id});
       if(emp){showAction(emp);return;}
-      localStorage.removeItem('tc_employee');
+      localStorage.removeItem(‘tc_employee’);
     }catch(e){}
   }
   loadAll();
 }
 
 async function loadAll(){
-  show('s-who');
-  document.getElementById('loading-msg').style.display='block';
-  document.getElementById('who-heading').style.display='none';
-  document.getElementById('who-sub').style.display='none';
-  document.getElementById('emp-list').innerHTML='';
+  show(‘s-who’);
+  document.getElementById(‘loading-msg’).style.display=’block’;
+  document.getElementById(‘who-heading’).style.display=’none’;
+  document.getElementById(‘who-sub’).style.display=’none’;
+  document.getElementById(‘emp-list’).innerHTML=’’;
   try{
     var emps=await fetchAll();
     renderList(emps);
   }catch(e){
-    document.getElementById('loading-msg').textContent='Could not load. Please refresh.';
+    document.getElementById(‘loading-msg’).textContent=’Could not load. Please refresh. / No se pudo cargar. Recargue.’;
   }
 }
 
 function renderList(emps){
-  document.getElementById('loading-msg').style.display='none';
-  var list=document.getElementById('emp-list');
+  document.getElementById(‘loading-msg’).style.display=’none’;
+  var list=document.getElementById(‘emp-list’);
   if(!emps.length){
-    list.innerHTML='<p style="text-align:center;color:#94a3b8;padding:40px 0">No employees set up yet.</p>';
+    list.innerHTML=’<p style="text-align:center;color:#94a3b8;padding:40px 0;font-size:1.1rem">No employees set up yet.</p>’;
     return;
   }
-  document.getElementById('who-heading').style.display='block';
-  document.getElementById('who-sub').style.display='block';
-  list.innerHTML='';
+  document.getElementById(‘who-heading’).style.display=’block’;
+  document.getElementById(‘who-sub’).style.display=’block’;
+  list.innerHTML=’’;
   emps.forEach(function(emp){
-    var btn=document.createElement('button');
-    btn.className='emp-btn';
+    var btn=document.createElement(‘button’);
+    btn.className=’emp-btn’;
     btn.textContent=emp.name;
-    btn.addEventListener('click',function(){
-      localStorage.setItem('tc_employee',JSON.stringify({id:emp.id,name:emp.name}));
+    btn.addEventListener(‘click’,function(){
+      localStorage.setItem(‘tc_employee’,JSON.stringify({id:emp.id,name:emp.name}));
       showAction(emp);
     });
     list.appendChild(btn);
@@ -1772,86 +1797,78 @@ function renderList(emps){
 
 function showAction(emp){
   currentEmp=emp;
-  document.getElementById('a-name').textContent=emp.name;
-  var statusEl=document.getElementById('a-status');
-  var btns=document.getElementById('a-btns');
-  btns.innerHTML='';
+  document.getElementById(‘a-name’).textContent=emp.name;
+  var statusEl=document.getElementById(‘a-status’);
+  var btns=document.getElementById(‘a-btns’);
+  btns.innerHTML=’’;
 
   var st=emp.status;
-  if(st==='not_clocked_in'){
-    statusEl.textContent='You haven’t clocked in yet today.';
-    btns.appendChild(makeBtn('🏠 Start the Work Day','btn-in',function(){doAction(emp,'clock_in')}));
-  } else if(st==='clocked_in'){
-    statusEl.textContent='Clocked in at '+fmtHHMM(emp.clock_in_time);
-    var row=document.createElement('div');
-    row.className='btn-row';
-    row.appendChild(makeBtn('🏁 Done for the day','btn-out',function(){doAction(emp,'clock_out')}));
-    row.appendChild(makeBtn('🍔 Lunch','btn-lunch',function(){doAction(emp,'lunch_out')}));
-    btns.appendChild(row);
-  } else if(st==='on_lunch'){
-    statusEl.textContent='On lunch since '+fmtHHMM(emp.lunch_out_time);
-    var row=document.createElement('div');
-    row.className='btn-row';
-    row.appendChild(makeBtn('Back from Lunch','btn-in',function(){doAction(emp,'lunch_in')}));
-    row.appendChild(makeBtn('🏁 Done for the day','btn-out',function(){doAction(emp,'clock_out')}));
-    btns.appendChild(row);
-  } else if(st==='returned_from_lunch'){
-    statusEl.textContent='Clocked in at '+fmtHHMM(emp.clock_in_time);
-    btns.appendChild(makeBtn('🏁 Done for the day','btn-out',function(){doAction(emp,'clock_out')}));
-  } else if(st==='clocked_out'){
-    statusEl.textContent='';
-    var d=document.createElement('div');
-    d.className='done-today';
-    d.textContent='🎉 You’re done for today!';
+  if(st===’not_clocked_in’){
+    statusEl.textContent=’Not clocked in yet / No registrado aún’;
+    btns.appendChild(makeBtn(‘🏠 Start the Work Day’,’Registrar Entrada’,’btn-in’,function(){doAction(emp,’clock_in’)}));
+  } else if(st===’clocked_in’){
+    statusEl.textContent=’Clocked in at / Entrada a las ‘+fmtHHMM(emp.clock_in_time);
+    btns.appendChild(makeBtn(‘🏁 Done for the Day’,’Registrar Salida’,’btn-out’,function(){doAction(emp,’clock_out’)}));
+    btns.appendChild(makeBtn(‘🍔 Lunch Out’,’Salida a Almuerzo’,’btn-lunch’,function(){doAction(emp,’lunch_out’)}));
+  } else if(st===’on_lunch’){
+    statusEl.textContent=’On lunch since / En almuerzo desde ‘+fmtHHMM(emp.lunch_out_time);
+    btns.appendChild(makeBtn(‘🥪 Back from Lunch’,’Regreso de Almuerzo’,’btn-in’,function(){doAction(emp,’lunch_in’)}));
+    btns.appendChild(makeBtn(‘🏁 Done for the Day’,’Registrar Salida’,’btn-out’,function(){doAction(emp,’clock_out’)}));
+  } else if(st===’returned_from_lunch’){
+    statusEl.textContent=’Clocked in at / Entrada a las ‘+fmtHHMM(emp.clock_in_time);
+    btns.appendChild(makeBtn(‘🏁 Done for the Day’,’Registrar Salida’,’btn-out’,function(){doAction(emp,’clock_out’)}));
+  } else {
+    statusEl.textContent=’’;
+    var d=document.createElement(‘div’);
+    d.className=’done-today’;
+    d.innerHTML=’🎉 Done for today! / ¡Fin del día!’;
     btns.appendChild(d);
   }
 
-  document.getElementById('switch-link').textContent='Not '+emp.name+'? Switch employee';
-  document.getElementById('switch-link').onclick=function(){
-    localStorage.removeItem('tc_employee');
+  document.getElementById(‘switch-link’).textContent=’Not ‘+emp.name+’? Switch / Cambiar empleado’;
+  document.getElementById(‘switch-link’).onclick=function(){
+    localStorage.removeItem(‘tc_employee’);
     currentEmp=null;
     loadAll();
   };
-  show('s-action');
+  show(‘s-action’);
 }
 
 async function doAction(emp,actionType){
-  document.querySelectorAll('#a-btns button').forEach(function(b){
-    b.disabled=true;b.textContent='Please wait…';
-  });
-  var d=null;
+  document.querySelectorAll(‘#a-btns button’).forEach(function(b){b.disabled=true;});
   try{
-    var r=await fetch('/timeclock/action',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+    var r=await fetch(‘/timeclock/action’,{
+      method:’POST’,
+      headers:{‘Content-Type’:’application/json’},
       body:JSON.stringify({employee_id:emp.id,action:actionType})
     });
     if(!r.ok){
       showAction(emp);
-      alert('Something went wrong (error '+r.status+'). Please try again.');
+      showError(‘Something went wrong (error ‘+r.status+’). Please try again.<br>Algo salió mal. Por favor intente de nuevo.’);
       return;
     }
-    d=await r.json();
+    var d=await r.json();
+    showFlash(d);
   }catch(e){
     showAction(emp);
-    alert('Could not reach the server. Check your connection and try again.');
-    return;
+    showError(‘Could not reach the server. Check your connection.<br>No se pudo conectar. Verifique su conexión.’);
   }
-  showConfirm(d);
 }
 
-function showConfirm(d){
+function showFlash(d){
   var map={
-    clock_in: {icon:'👋',msg:'Hi '+d.name+'!',sub:'Clocked in at '+d.time},
-    clock_out:{icon:'✅',msg:'Goodbye '+d.name+'!',sub:'Clocked out at '+d.time},
-    lunch_out:{icon:'🍔',msg:'Enjoy lunch, '+d.name+'!',sub:'Lunch started at '+d.time},
-    lunch_in: {icon:'💼',msg:'Welcome back, '+d.name+'!',sub:'Back at '+d.time}
+    clock_in: {icon:’👋’,msg:’Hi, ‘+d.name+’! / ¡Hola!’,        sub:’Clocked in at / Entrada a las ‘+d.time},
+    clock_out:{icon:’✅’,msg:’Goodbye! / ¡Hasta luego, ‘+d.name+’!’,sub:’Clocked out at / Salida a las ‘+d.time},
+    lunch_out:{icon:’🍔’,msg:’Enjoy lunch! / ¡Buen provecho!’,    sub:’Lunch out at / Almuerzo desde ‘+d.time},
+    lunch_in: {icon:’💼’,msg:’Welcome back, ‘+d.name+’!’,         sub:’Back at / Regreso a las ‘+d.time}
   };
-  var m=map[d.action]||{icon:'✅',msg:d.name,sub:d.time};
-  document.getElementById('c-icon').textContent=m.icon;
-  document.getElementById('c-msg').textContent=m.msg;
-  document.getElementById('c-sub').textContent=m.sub;
-  document.getElementById('done-btn').onclick=async function(){
+  var m=map[d.action]||{icon:’✅’,msg:d.name,sub:d.time};
+  document.getElementById(‘flash-icon’).textContent=m.icon;
+  document.getElementById(‘flash-msg’).textContent=m.msg;
+  document.getElementById(‘flash-sub’).textContent=m.sub;
+  document.getElementById(‘flash’).className=’active’;
+  setTimeout(async function(){
+    document.getElementById(‘flash’).className=’’;
     if(currentEmp){
       try{
         var emps=await fetchAll();
@@ -1860,16 +1877,15 @@ function showConfirm(d){
       }catch(e){}
     }
     loadAll();
-  };
-  show('s-confirm');
+  },2200);
 }
 
 // Session timeout
 (function(){
   var params=new URLSearchParams(location.search);
-  var t=parseInt(params.get('t')||'0',10);
+  var t=parseInt(params.get(‘t’)||’0’,10);
   var TIMEOUT=900;
-  var bar=document.getElementById('session-bar');
+  var bar=document.getElementById(‘session-bar’);
   var expired=false;
 
   function remaining(){
@@ -1878,17 +1894,19 @@ function showConfirm(d){
   }
   function fmt(s){
     var m=Math.floor(s/60),sc=s%60;
-    return 'Session expires in '+m+':'+(sc<10?'0':'')+sc;
+    return ‘Session expires in / Sesión expira en ‘+m+’:’+(sc<10?’0’:’’)+sc;
   }
   function disableAll(){
-    document.querySelectorAll('.action-btn,.emp-btn').forEach(function(b){b.disabled=true;});
+    document.querySelectorAll(‘.action-btn,.emp-btn’).forEach(function(b){b.disabled=true;});
   }
   function expire(){
     if(expired)return;
     expired=true;
-    if(bar){bar.textContent='Session expired. Please scan the QR code again.';bar.className='expired';}
+    if(bar){
+      bar.textContent=’Session expired. Please scan the QR code again. / Sesión expirada. Por favor escanee el código QR de nuevo.’;
+      bar.className=’expired’;
+    }
     disableAll();
-    // Re-disable whenever new buttons render (e.g. after employee selection)
     var obs=new MutationObserver(disableAll);
     obs.observe(document.body,{childList:true,subtree:true});
   }
