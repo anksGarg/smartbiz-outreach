@@ -1704,6 +1704,10 @@ header p{font-size:.8rem;opacity:.7;margin-top:2px}
 <script>
 var currentEmp=null;
 
+// If the browser restores this page from bfcache (mobile back/forward), force a full
+// reload so the 5-minute session timer always starts fresh on every QR scan.
+window.addEventListener('pageshow',function(e){if(e.persisted){location.reload();}});
+
 // Scan mode: true on every fresh page load; false after any successful action
 sessionStorage.setItem('fromScan','true');
 
