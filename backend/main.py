@@ -1915,7 +1915,7 @@ function showDoneForToday(){
   btns.innerHTML='';
   var d=document.createElement('div');
   d.className='done-today';
-  d.innerHTML="🎉 You're clocked out. See you tomorrow! / ¡Hasta manana!";
+  d.innerHTML="🎉 You're clocked out. See you later! / ¡Hasta luego!";
   btns.appendChild(d);
   var emp=currentEmp;
   btns.appendChild(makeBtn('🏠 Start the Work Day','Registrar Entrada','btn-in',function(){doAction(emp,'clock_in')}));
