@@ -1880,12 +1880,11 @@ function showAction(emp){
 
   } else if(st==='on_lunch'){
     statusEl.textContent='On lunch since / En almuerzo desde '+fmtHHMM(emp.lunch_out_time);
+    // Back from Lunch is always available after a rescan
+    btns.appendChild(makeBtn('🥪 Back from Lunch','Regreso de Almuerzo','btn-in',function(){doAction(emp,'lunch_in')}));
     if(scan){
-      // Scan: employee skipped lunch clock-in — Clock Out (backend sets missed lunch note)
-      btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
-    } else {
-      // Stay: employee just got back from lunch
-      btns.appendChild(makeBtn('🥪 Back from Lunch','Regreso de Almuerzo','btn-in',function(){doAction(emp,'lunch_in')}));
+      // Scan only: also offer Done for Day in case they skip clocking back in from lunch
+      btns.appendChild(makeBtn('🏁 Done for the Day','Fin del dia','btn-out',function(){doAction(emp,'clock_out')}));
     }
 
   } else if(st==='returned_from_lunch'){
