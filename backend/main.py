@@ -1608,6 +1608,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 header{background:#1e3a5f;color:#fff;padding:20px 24px;text-align:center}
 header h1{font-size:1.25rem;font-weight:700}
 header p{font-size:.85rem;opacity:.75;margin-top:4px}
+#session-bar{padding:8px 16px;text-align:center;font-size:.82rem;font-weight:500;background:#f0fdf4;border-bottom:1px solid #bbf7d0;color:#16a34a}
+#session-bar.expired{background:#fef2f2;border-color:#fecaca;color:#dc2626}
 
 .screen{display:none;flex-direction:column;flex:1;padding:24px 16px}
 .screen.active{display:flex}
@@ -1654,6 +1656,7 @@ header p{font-size:.85rem;opacity:.75;margin-top:4px}
   <h1>Willamette Power Roofing</h1>
   <p>Employee Time Clock</p>
 </header>
+<div id="session-bar"></div>
 
 <!-- Screen 1: Who are you? -->
 <div id="s-who" class="screen active">
@@ -1861,6 +1864,43 @@ function showConfirm(d){
   show('s-confirm');
 }
 
+// Session timeout
+(function(){
+  var params=new URLSearchParams(location.search);
+  var t=parseInt(params.get('t')||'0',10);
+  var TIMEOUT=900;
+  var bar=document.getElementById('session-bar');
+  var expired=false;
+
+  function remaining(){
+    if(!t)return -1;
+    return TIMEOUT-(Math.floor(Date.now()/1000)-t);
+  }
+  function fmt(s){
+    var m=Math.floor(s/60),sc=s%60;
+    return 'Session expires in '+m+':'+(sc<10?'0':'')+sc;
+  }
+  function disableAll(){
+    document.querySelectorAll('.action-btn,.emp-btn').forEach(function(b){b.disabled=true;});
+  }
+  function expire(){
+    if(expired)return;
+    expired=true;
+    if(bar){bar.textContent='Session expired. Please scan the QR code again.';bar.className='expired';}
+    disableAll();
+    // Re-disable whenever new buttons render (e.g. after employee selection)
+    var obs=new MutationObserver(disableAll);
+    obs.observe(document.body,{childList:true,subtree:true});
+  }
+  function tick(){
+    var r=remaining();
+    if(r<=0){expire();return;}
+    if(bar)bar.textContent=fmt(r);
+    setTimeout(tick,1000);
+  }
+  if(!t){expire();}else{tick();}
+})();
+
 init();
 </script>
 </body>
@@ -1870,7 +1910,8 @@ init();
 @app.get("/timeclock/qr")
 def timeclock_qr():
     base_url = os.getenv("BASE_URL", "https://smartbiz-outreach.onrender.com")
-    url = f"{base_url}/timeclock"
+    t = int(datetime.now().timestamp())
+    url = f"{base_url}/timeclock?t={t}"
     return {"qr_code": _make_qr_b64(url), "url": url}
 
 
