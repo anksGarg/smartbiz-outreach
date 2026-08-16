@@ -1616,7 +1616,7 @@ def timeclock_page():
 <title>Time Clock</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,’Segoe UI’,sans-serif;background:#f8fafc;min-height:100vh;display:flex;flex-direction:column}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;min-height:100vh;display:flex;flex-direction:column}
 header{background:#1e3a5f;color:#fff;padding:16px 24px;text-align:center}
 header h1{font-size:1.2rem;font-weight:700}
 header p{font-size:.8rem;opacity:.7;margin-top:2px}
@@ -1705,51 +1705,51 @@ var currentEmp=null;
 function updateClock(){
   var now=new Date();
   var h=now.getHours(),m=now.getMinutes(),s=now.getSeconds();
-  var ap=h>=12?’PM’:’AM’;var h12=h%12||12;
-  var cl=document.getElementById(‘live-clock’);
-  var dl=document.getElementById(‘live-date’);
-  if(cl)cl.textContent=h12+’:’+(m<10?’0’:’’)+m+’:’+(s<10?’0’:’’)+s+’ ‘+ap;
+  var ap=h>=12?'PM':'AM';var h12=h%12||12;
+  var cl=document.getElementById('live-clock');
+  var dl=document.getElementById('live-date');
+  if(cl)cl.textContent=h12+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s+' '+ap;
   if(dl){
-    var days=[‘Sunday’,’Monday’,’Tuesday’,’Wednesday’,’Thursday’,’Friday’,’Saturday’];
-    var mos=[‘Jan’,’Feb’,’Mar’,’Apr’,’May’,’Jun’,’Jul’,’Aug’,’Sep’,’Oct’,’Nov’,’Dec’];
-    dl.textContent=days[now.getDay()]+’, ‘+mos[now.getMonth()]+’ ‘+now.getDate();
+    var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var mos=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    dl.textContent=days[now.getDay()]+', '+mos[now.getMonth()]+' '+now.getDate();
   }
 }
 updateClock();setInterval(updateClock,1000);
 
 function fmtHHMM(s){
-  if(!s)return’’;
+  if(!s)return'';
   var m=s.match(/(\\d{1,2}):(\\d{2})/);
   if(!m)return s;
   var h=parseInt(m[1]),mn=parseInt(m[2]);
-  var ap=h>=12?’PM’:’AM’;h=h%12||12;
-  return h+’:’+(mn<10?’0’:’’)+mn+’ ‘+ap;
+  var ap=h>=12?'PM':'AM';h=h%12||12;
+  return h+':'+(mn<10?'0':'')+mn+' '+ap;
 }
 
 function showError(msg){
-  var b=document.getElementById(‘error-banner’);
-  b.innerHTML=msg;b.style.display=’block’;
-  setTimeout(function(){b.style.display=’none’;},6000);
+  var b=document.getElementById('error-banner');
+  b.innerHTML=msg;b.style.display='block';
+  setTimeout(function(){b.style.display='none';},6000);
 }
 
 function show(id){
-  [‘s-who’,’s-action’].forEach(function(s){
-    document.getElementById(s).classList.toggle(‘active’,s===id);
+  ['s-who','s-action'].forEach(function(s){
+    document.getElementById(s).classList.toggle('active',s===id);
   });
 }
 
 async function fetchAll(){
-  console.log(‘[tc] fetchAll: starting fetch /employees’);
+  console.log('[tc] fetchAll: starting fetch /employees');
   var ctrl=new AbortController();
   var tid=setTimeout(function(){
-    console.log(‘[tc] fetchAll: 10s timeout reached, aborting’);
+    console.log('[tc] fetchAll: 10s timeout reached, aborting');
     ctrl.abort();
   },10000);
   try{
-    var r=await fetch(‘/employees’,{signal:ctrl.signal});
-    console.log(‘[tc] fetchAll: response received, status=’+r.status);
+    var r=await fetch('/employees',{signal:ctrl.signal});
+    console.log('[tc] fetchAll: response received, status='+r.status);
     var d=await r.json();
-    console.log(‘[tc] fetchAll: parsed JSON, employee count=’+(d.employees||[]).length);
+    console.log('[tc] fetchAll: parsed JSON, employee count='+(d.employees||[]).length);
     return d.employees||[];
   }finally{
     clearTimeout(tid);
@@ -1757,52 +1757,52 @@ async function fetchAll(){
 }
 
 function makeBtn(label,sub,cls,handler){
-  var b=document.createElement(‘button’);
-  b.className=’action-btn ‘+cls;
-  b.innerHTML=label+(sub?’<span class="btn-sub">’+sub+’</span>’:’’);
+  var b=document.createElement('button');
+  b.className='action-btn '+cls;
+  b.innerHTML=label+(sub?'<span class="btn-sub">'+sub+'</span>':'');
   b.onclick=handler;
   return b;
 }
 
 function showConnectError(){
-  var lm=document.getElementById(‘loading-msg’);
-  lm.style.display=’block’;
-  lm.innerHTML=’Could not connect. Please check your connection and try again.<br>No se pudo conectar. Por favor verifique su conexión e intente de nuevo.<br><button onclick="loadAll()" style="margin-top:16px;padding:14px 32px;background:#1e3a5f;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer">Retry / Reintentar</button>’;
+  var lm=document.getElementById('loading-msg');
+  lm.style.display='block';
+  lm.innerHTML='Could not connect. Please check your connection and try again.<br>No se pudo conectar. Por favor verifique su conexión e intente de nuevo.<br><button onclick="loadAll()" style="margin-top:16px;padding:14px 32px;background:#1e3a5f;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer">Retry / Reintentar</button>';
 }
 
 // 10-second global fallback: if still loading, show a message
 var _loadingTimer=setTimeout(function(){
-  var lm=document.getElementById(‘loading-msg’);
-  if(lm&&lm.style.display!==’none’&&!lm.innerHTML.includes(‘Retry’)){
-    console.log(‘[tc] fallback: still loading after 10s’);
-    lm.innerHTML=’Taking too long. Please refresh.<br>Tardando demasiado. Por favor recargue.<br><button onclick="location.reload()" style="margin-top:16px;padding:14px 32px;background:#1e3a5f;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer">Refresh / Recargar</button>’;
+  var lm=document.getElementById('loading-msg');
+  if(lm&&lm.style.display!=='none'&&!lm.innerHTML.includes('Retry')){
+    console.log('[tc] fallback: still loading after 10s');
+    lm.innerHTML='Taking too long. Please refresh.<br>Tardando demasiado. Por favor recargue.<br><button onclick="location.reload()" style="margin-top:16px;padding:14px 32px;background:#1e3a5f;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer">Refresh / Recargar</button>';
   }
 },10000);
 
 async function init(){
   var saved=null;
-  try{saved=JSON.parse(localStorage.getItem(‘tc_employee’))}catch(e){
-    console.log(‘[tc] init: localStorage parse error=’+e);
-    localStorage.removeItem(‘tc_employee’);
+  try{saved=JSON.parse(localStorage.getItem('tc_employee'))}catch(e){
+    console.log('[tc] init: localStorage parse error='+e);
+    localStorage.removeItem('tc_employee');
   }
-  console.log(‘[tc] init: localStorage saved=’+(saved?saved.name:’none’));
+  console.log('[tc] init: localStorage saved='+(saved?saved.name:'none'));
   if(saved&&saved.id){
-    show(‘s-action’);
-    document.getElementById(‘a-name’).textContent=saved.name;
-    document.getElementById(‘a-status’).textContent=’Loading…’;
-    document.getElementById(‘a-btns’).innerHTML=’’;
-    document.getElementById(‘switch-link’).textContent=’’;
+    show('s-action');
+    document.getElementById('a-name').textContent=saved.name;
+    document.getElementById('a-status').textContent='Loading…';
+    document.getElementById('a-btns').innerHTML='';
+    document.getElementById('switch-link').textContent='';
     try{
       var emps=await fetchAll();
       var emp=emps.find(function(e){return e.id===saved.id});
-      console.log(‘[tc] init: saved employee found in list=’+(!!emp));
+      console.log('[tc] init: saved employee found in list='+(!!emp));
       if(emp){clearTimeout(_loadingTimer);showAction(emp);return;}
       // Stale ID — clear and fall through to employee selection
-      console.log(‘[tc] init: stale employee ID, clearing localStorage’);
-      localStorage.removeItem(‘tc_employee’);
+      console.log('[tc] init: stale employee ID, clearing localStorage');
+      localStorage.removeItem('tc_employee');
     }catch(e){
-      console.log(‘[tc] init: fetchAll error=’+e);
-      show(‘s-who’);
+      console.log('[tc] init: fetchAll error='+e);
+      show('s-who');
       showConnectError();
       return;
     }
@@ -1811,39 +1811,39 @@ async function init(){
 }
 
 async function loadAll(){
-  console.log(‘[tc] loadAll: starting’);
-  show(‘s-who’);
-  document.getElementById(‘loading-msg’).style.display=’block’;
-  document.getElementById(‘who-heading’).style.display=’none’;
-  document.getElementById(‘who-sub’).style.display=’none’;
-  document.getElementById(‘emp-list’).innerHTML=’’;
+  console.log('[tc] loadAll: starting');
+  show('s-who');
+  document.getElementById('loading-msg').style.display='block';
+  document.getElementById('who-heading').style.display='none';
+  document.getElementById('who-sub').style.display='none';
+  document.getElementById('emp-list').innerHTML='';
   try{
     var emps=await fetchAll();
-    console.log(‘[tc] loadAll: rendering ‘+emps.length+’ employees’);
+    console.log('[tc] loadAll: rendering '+emps.length+' employees');
     clearTimeout(_loadingTimer);
     renderList(emps);
   }catch(e){
-    console.log(‘[tc] loadAll: fetchAll error=’+e);
+    console.log('[tc] loadAll: fetchAll error='+e);
     showConnectError();
   }
 }
 
 function renderList(emps){
-  document.getElementById(‘loading-msg’).style.display=’none’;
-  var list=document.getElementById(‘emp-list’);
+  document.getElementById('loading-msg').style.display='none';
+  var list=document.getElementById('emp-list');
   if(!emps.length){
-    list.innerHTML=’<p style="text-align:center;color:#94a3b8;padding:40px 0;font-size:1.1rem">No employees set up yet.</p>’;
+    list.innerHTML='<p style="text-align:center;color:#94a3b8;padding:40px 0;font-size:1.1rem">No employees set up yet.</p>';
     return;
   }
-  document.getElementById(‘who-heading’).style.display=’block’;
-  document.getElementById(‘who-sub’).style.display=’block’;
-  list.innerHTML=’’;
+  document.getElementById('who-heading').style.display='block';
+  document.getElementById('who-sub').style.display='block';
+  list.innerHTML='';
   emps.forEach(function(emp){
-    var btn=document.createElement(‘button’);
-    btn.className=’emp-btn’;
+    var btn=document.createElement('button');
+    btn.className='emp-btn';
     btn.textContent=emp.name;
-    btn.addEventListener(‘click’,function(){
-      localStorage.setItem(‘tc_employee’,JSON.stringify({id:emp.id,name:emp.name}));
+    btn.addEventListener('click',function(){
+      localStorage.setItem('tc_employee',JSON.stringify({id:emp.id,name:emp.name}));
       showAction(emp);
     });
     list.appendChild(btn);
@@ -1852,78 +1852,78 @@ function renderList(emps){
 
 function showAction(emp){
   currentEmp=emp;
-  document.getElementById(‘a-name’).textContent=emp.name;
-  var statusEl=document.getElementById(‘a-status’);
-  var btns=document.getElementById(‘a-btns’);
-  btns.innerHTML=’’;
+  document.getElementById('a-name').textContent=emp.name;
+  var statusEl=document.getElementById('a-status');
+  var btns=document.getElementById('a-btns');
+  btns.innerHTML='';
 
   var st=emp.status;
-  if(st===’not_clocked_in’){
-    statusEl.textContent=’Not clocked in yet / No registrado aún’;
-    btns.appendChild(makeBtn(‘🏠 Start the Work Day’,’Registrar Entrada’,’btn-in’,function(){doAction(emp,’clock_in’)}));
-  } else if(st===’clocked_in’){
-    statusEl.textContent=’Clocked in at / Entrada a las ‘+fmtHHMM(emp.clock_in_time);
-    btns.appendChild(makeBtn(‘🏁 Done for the Day’,’Registrar Salida’,’btn-out’,function(){doAction(emp,’clock_out’)}));
-    btns.appendChild(makeBtn(‘🍔 Lunch Out’,’Salida a Almuerzo’,’btn-lunch’,function(){doAction(emp,’lunch_out’)}));
-  } else if(st===’on_lunch’){
-    statusEl.textContent=’On lunch since / En almuerzo desde ‘+fmtHHMM(emp.lunch_out_time);
-    btns.appendChild(makeBtn(‘🥪 Back from Lunch’,’Regreso de Almuerzo’,’btn-in’,function(){doAction(emp,’lunch_in’)}));
-    btns.appendChild(makeBtn(‘🏁 Done for the Day’,’Registrar Salida’,’btn-out’,function(){doAction(emp,’clock_out’)}));
-  } else if(st===’returned_from_lunch’){
-    statusEl.textContent=’Clocked in at / Entrada a las ‘+fmtHHMM(emp.clock_in_time);
-    btns.appendChild(makeBtn(‘🏁 Done for the Day’,’Registrar Salida’,’btn-out’,function(){doAction(emp,’clock_out’)}));
+  if(st==='not_clocked_in'){
+    statusEl.textContent='Not clocked in yet / No registrado aún';
+    btns.appendChild(makeBtn('🏠 Start the Work Day','Registrar Entrada','btn-in',function(){doAction(emp,'clock_in')}));
+  } else if(st==='clocked_in'){
+    statusEl.textContent='Clocked in at / Entrada a las '+fmtHHMM(emp.clock_in_time);
+    btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
+    btns.appendChild(makeBtn('🍔 Lunch Out','Salida a Almuerzo','btn-lunch',function(){doAction(emp,'lunch_out')}));
+  } else if(st==='on_lunch'){
+    statusEl.textContent='On lunch since / En almuerzo desde '+fmtHHMM(emp.lunch_out_time);
+    btns.appendChild(makeBtn('🥪 Back from Lunch','Regreso de Almuerzo','btn-in',function(){doAction(emp,'lunch_in')}));
+    btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
+  } else if(st==='returned_from_lunch'){
+    statusEl.textContent='Clocked in at / Entrada a las '+fmtHHMM(emp.clock_in_time);
+    btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
   } else {
-    statusEl.textContent=’’;
-    var d=document.createElement(‘div’);
-    d.className=’done-today’;
-    d.innerHTML=’🎉 Done for today! / ¡Fin del día!’;
+    statusEl.textContent='';
+    var d=document.createElement('div');
+    d.className='done-today';
+    d.innerHTML='🎉 Done for today! / ¡Fin del día!';
     btns.appendChild(d);
   }
 
-  document.getElementById(‘switch-link’).textContent=’Not ‘+emp.name+’? Switch / Cambiar empleado’;
-  document.getElementById(‘switch-link’).onclick=function(){
-    localStorage.removeItem(‘tc_employee’);
+  document.getElementById('switch-link').textContent='Not '+emp.name+'? Switch / Cambiar empleado';
+  document.getElementById('switch-link').onclick=function(){
+    localStorage.removeItem('tc_employee');
     currentEmp=null;
     loadAll();
   };
-  show(‘s-action’);
+  show('s-action');
 }
 
 async function doAction(emp,actionType){
-  document.querySelectorAll(‘#a-btns button’).forEach(function(b){b.disabled=true;});
+  document.querySelectorAll('#a-btns button').forEach(function(b){b.disabled=true;});
   try{
-    var r=await fetch(‘/timeclock/action’,{
-      method:’POST’,
-      headers:{‘Content-Type’:’application/json’},
+    var r=await fetch('/timeclock/action',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({employee_id:emp.id,action:actionType})
     });
     if(!r.ok){
       showAction(emp);
-      showError(‘Something went wrong (error ‘+r.status+’). Please try again.<br>Algo salió mal. Por favor intente de nuevo.’);
+      showError('Something went wrong (error '+r.status+'). Please try again.<br>Algo salió mal. Por favor intente de nuevo.');
       return;
     }
     var d=await r.json();
     showFlash(d);
   }catch(e){
     showAction(emp);
-    showError(‘Could not reach the server. Check your connection.<br>No se pudo conectar. Verifique su conexión.’);
+    showError('Could not reach the server. Check your connection.<br>No se pudo conectar. Verifique su conexión.');
   }
 }
 
 function showFlash(d){
   var map={
-    clock_in: {icon:’👋’,msg:’Hi, ‘+d.name+’! / ¡Hola!’,        sub:’Clocked in at / Entrada a las ‘+d.time},
-    clock_out:{icon:’✅’,msg:’Goodbye! / ¡Hasta luego, ‘+d.name+’!’,sub:’Clocked out at / Salida a las ‘+d.time},
-    lunch_out:{icon:’🍔’,msg:’Enjoy lunch! / ¡Buen provecho!’,    sub:’Lunch out at / Almuerzo desde ‘+d.time},
-    lunch_in: {icon:’💼’,msg:’Welcome back, ‘+d.name+’!’,         sub:’Back at / Regreso a las ‘+d.time}
+    clock_in: {icon:'👋',msg:'Hi, '+d.name+'! / ¡Hola!',        sub:'Clocked in at / Entrada a las '+d.time},
+    clock_out:{icon:'✅',msg:'Goodbye! / ¡Hasta luego, '+d.name+'!',sub:'Clocked out at / Salida a las '+d.time},
+    lunch_out:{icon:'🍔',msg:'Enjoy lunch! / ¡Buen provecho!',    sub:'Lunch out at / Almuerzo desde '+d.time},
+    lunch_in: {icon:'💼',msg:'Welcome back, '+d.name+'!',         sub:'Back at / Regreso a las '+d.time}
   };
-  var m=map[d.action]||{icon:’✅’,msg:d.name,sub:d.time};
-  document.getElementById(‘flash-icon’).textContent=m.icon;
-  document.getElementById(‘flash-msg’).textContent=m.msg;
-  document.getElementById(‘flash-sub’).textContent=m.sub;
-  document.getElementById(‘flash’).className=’active’;
+  var m=map[d.action]||{icon:'✅',msg:d.name,sub:d.time};
+  document.getElementById('flash-icon').textContent=m.icon;
+  document.getElementById('flash-msg').textContent=m.msg;
+  document.getElementById('flash-sub').textContent=m.sub;
+  document.getElementById('flash').className='active';
   setTimeout(async function(){
-    document.getElementById(‘flash’).className=’’;
+    document.getElementById('flash').className='';
     if(currentEmp){
       try{
         var emps=await fetchAll();
@@ -1938,9 +1938,9 @@ function showFlash(d){
 // Session timeout
 (function(){
   var params=new URLSearchParams(location.search);
-  var t=parseInt(params.get(‘t’)||’0’,10);
+  var t=parseInt(params.get('t')||'0',10);
   var TIMEOUT=900;
-  var bar=document.getElementById(‘session-bar’);
+  var bar=document.getElementById('session-bar');
   var expired=false;
 
   function remaining(){
@@ -1949,17 +1949,17 @@ function showFlash(d){
   }
   function fmt(s){
     var m=Math.floor(s/60),sc=s%60;
-    return ‘Session expires in / Sesión expira en ‘+m+’:’+(sc<10?’0’:’’)+sc;
+    return 'Session expires in / Sesión expira en '+m+':'+(sc<10?'0':'')+sc;
   }
   function disableAll(){
-    document.querySelectorAll(‘.action-btn,.emp-btn’).forEach(function(b){b.disabled=true;});
+    document.querySelectorAll('.action-btn,.emp-btn').forEach(function(b){b.disabled=true;});
   }
   function expire(){
     if(expired)return;
     expired=true;
     if(bar){
-      bar.textContent=’Session expired. Please scan the QR code again. / Sesión expirada. Por favor escanee el código QR de nuevo.’;
-      bar.className=’expired’;
+      bar.textContent='Session expired. Please scan the QR code again. / Sesión expirada. Por favor escanee el código QR de nuevo.';
+      bar.className='expired';
     }
     disableAll();
     var obs=new MutationObserver(disableAll);
