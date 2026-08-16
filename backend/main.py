@@ -1980,7 +1980,7 @@ function showFlash(d){
 // Session timeout — starts when the page loads, not from QR code timestamp
 (function(){
   var t=Math.floor(Date.now()/1000);
-  var TIMEOUT=900;
+  var TIMEOUT=300;
   var bar=document.getElementById('session-bar');
   var expired=false;
 
