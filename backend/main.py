@@ -1874,33 +1874,26 @@ function showAction(emp){
   }
 
   if(st==='not_clocked_in'){
+    // Clock In available in both modes
     statusEl.textContent='Not clocked in yet / No registrado aun';
-    if(scan){
-      btns.appendChild(makeBtn('🏠 Start the Work Day','Registrar Entrada','btn-in',function(){doAction(emp,'clock_in')}));
-    } else {
-      scanMsg('Scan QR code to clock in / Escanee el codigo QR para registrar entrada');
-    }
+    btns.appendChild(makeBtn('🏠 Start the Work Day','Registrar Entrada','btn-in',function(){doAction(emp,'clock_in')}));
 
-  } else if(st==='clocked_in'){
+  } else if(st==='clocked_in'||st==='returned_from_lunch'){
+    // returned_from_lunch is treated as clocked_in for display
     statusEl.textContent='Clocked in at / Entrada a las '+fmtHHMM(emp.clock_in_time);
-    btns.appendChild(makeBtn('🍔 Going for Lunch','Salida a Almuerzo','btn-lunch',function(){doAction(emp,'lunch_out')}));
     if(scan){
+      btns.appendChild(makeBtn('🍔 Going for Lunch','Salida a Almuerzo','btn-lunch',function(){doAction(emp,'lunch_out')}));
       btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
+    } else {
+      scanMsg('Scan QR code to continue / Escanee el codigo QR para continuar');
     }
 
   } else if(st==='on_lunch'){
     statusEl.textContent='On lunch since / En almuerzo desde '+fmtHHMM(emp.lunch_out_time);
-    btns.appendChild(makeBtn('🥪 Back from Lunch','Regreso de Almuerzo','btn-in',function(){doAction(emp,'lunch_in')}));
     if(scan){
-      btns.appendChild(makeBtn('🏁 Done for the Day','Fin del dia','btn-out',function(){doAction(emp,'clock_out')}));
-    }
-
-  } else if(st==='returned_from_lunch'){
-    statusEl.textContent='Back from lunch / Regreso de almuerzo';
-    if(scan){
-      btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
+      btns.appendChild(makeBtn('🥪 Back from Lunch','Regreso de Almuerzo','btn-in',function(){doAction(emp,'lunch_in')}));
     } else {
-      scanMsg('Scan QR code to clock out / Escanee el codigo QR para registrar salida');
+      scanMsg('Scan QR code to continue / Escanee el codigo QR para continuar');
     }
   }
 
@@ -2092,8 +2085,12 @@ def timeclock_action(req: TimeclockActionRequest):
         ci_full   = (open_row.get("clock_in")  or "").strip()
         lunch_out = (open_row.get("lunch_out") or "").strip()
         lunch_in  = (open_row.get("lunch_in")  or "").strip()
-        # Clocked out while still on lunch — flag for manual review, treat lunch as 0
-        notes = "missed lunch clock-in" if (lunch_out and not lunch_in) else ""
+        if lunch_out and not lunch_in:
+            notes = "missed lunch clock-in"   # left for lunch, never clocked back in
+        elif not lunch_out:
+            notes = "no lunch taken on shift"
+        else:
+            notes = ""
         _update_clock_out(entry_id, now_time, ci_full, lunch_out, "", notes=notes)
         return {"action": "clock_out", "name": emp["name"], "time": now_disp}
 
