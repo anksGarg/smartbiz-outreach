@@ -1770,9 +1770,21 @@ function showConnectError(){
   lm.innerHTML=’Could not connect. Please check your connection and try again.<br>No se pudo conectar. Por favor verifique su conexión e intente de nuevo.<br><button onclick="loadAll()" style="margin-top:16px;padding:14px 32px;background:#1e3a5f;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer">Retry / Reintentar</button>’;
 }
 
+// 10-second global fallback: if still loading, show a message
+var _loadingTimer=setTimeout(function(){
+  var lm=document.getElementById(‘loading-msg’);
+  if(lm&&lm.style.display!==’none’&&!lm.innerHTML.includes(‘Retry’)){
+    console.log(‘[tc] fallback: still loading after 10s’);
+    lm.innerHTML=’Taking too long. Please refresh.<br>Tardando demasiado. Por favor recargue.<br><button onclick="location.reload()" style="margin-top:16px;padding:14px 32px;background:#1e3a5f;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer">Refresh / Recargar</button>’;
+  }
+},10000);
+
 async function init(){
   var saved=null;
-  try{saved=JSON.parse(localStorage.getItem(‘tc_employee’))}catch(e){}
+  try{saved=JSON.parse(localStorage.getItem(‘tc_employee’))}catch(e){
+    console.log(‘[tc] init: localStorage parse error=’+e);
+    localStorage.removeItem(‘tc_employee’);
+  }
   console.log(‘[tc] init: localStorage saved=’+(saved?saved.name:’none’));
   if(saved&&saved.id){
     show(‘s-action’);
@@ -1784,7 +1796,9 @@ async function init(){
       var emps=await fetchAll();
       var emp=emps.find(function(e){return e.id===saved.id});
       console.log(‘[tc] init: saved employee found in list=’+(!!emp));
-      if(emp){showAction(emp);return;}
+      if(emp){clearTimeout(_loadingTimer);showAction(emp);return;}
+      // Stale ID — clear and fall through to employee selection
+      console.log(‘[tc] init: stale employee ID, clearing localStorage’);
       localStorage.removeItem(‘tc_employee’);
     }catch(e){
       console.log(‘[tc] init: fetchAll error=’+e);
@@ -1806,6 +1820,7 @@ async function loadAll(){
   try{
     var emps=await fetchAll();
     console.log(‘[tc] loadAll: rendering ‘+emps.length+’ employees’);
+    clearTimeout(_loadingTimer);
     renderList(emps);
   }catch(e){
     console.log(‘[tc] loadAll: fetchAll error=’+e);
