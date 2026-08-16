@@ -1710,18 +1710,18 @@ sessionStorage.setItem('fromScan','true');
 // Live clock — updates every second
 function updateClock(){
   var now=new Date();
-  var h=now.getHours(),m=now.getMinutes(),s=now.getSeconds();
+  var h=now.getHours(),m=now.getMinutes();
   var ap=h>=12?'PM':'AM';var h12=h%12||12;
   var cl=document.getElementById('live-clock');
   var dl=document.getElementById('live-date');
-  if(cl)cl.textContent=h12+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s+' '+ap;
+  if(cl)cl.textContent=h12+':'+(m<10?'0':'')+m+' '+ap;
   if(dl){
     var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     var mos=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     dl.textContent=days[now.getDay()]+', '+mos[now.getMonth()]+' '+now.getDate();
   }
 }
-updateClock();setInterval(updateClock,1000);
+updateClock();setInterval(updateClock,10000);
 
 function fmtHHMM(s){
   if(!s)return'';
@@ -1991,8 +1991,8 @@ function showFlash(d){
     return TIMEOUT-(Math.floor(Date.now()/1000)-t);
   }
   function fmt(s){
-    var m=Math.floor(s/60),sc=s%60;
-    return 'Session expires in / Sesión expira en '+m+':'+(sc<10?'0':'')+sc;
+    var m=Math.ceil(s/60);
+    return 'Session expires in / Sesion expira en '+m+' min';
   }
   function disableAll(){
     document.querySelectorAll('.action-btn,.emp-btn').forEach(function(b){b.disabled=true;});
@@ -2012,7 +2012,7 @@ function showFlash(d){
     var r=remaining();
     if(r<=0){expire();return;}
     if(bar)bar.textContent=fmt(r);
-    setTimeout(tick,1000);
+    setTimeout(tick,30000);
   }
   if(!t){expire();}else{tick();}
 })();
