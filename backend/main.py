@@ -1739,9 +1739,15 @@ function show(id){
 }
 
 async function fetchAll(){
-  var r=await fetch(‘/employees’);
-  var d=await r.json();
-  return d.employees||[];
+  var ctrl=new AbortController();
+  var tid=setTimeout(function(){ctrl.abort();},15000);
+  try{
+    var r=await fetch(‘/employees’,{signal:ctrl.signal});
+    var d=await r.json();
+    return d.employees||[];
+  }finally{
+    clearTimeout(tid);
+  }
 }
 
 function makeBtn(label,sub,cls,handler){
@@ -1766,7 +1772,7 @@ async function init(){
       var emp=emps.find(function(e){return e.id===saved.id});
       if(emp){showAction(emp);return;}
       localStorage.removeItem(‘tc_employee’);
-    }catch(e){}
+    }catch(e){loadAll();return;}
   }
   loadAll();
 }
@@ -1781,7 +1787,8 @@ async function loadAll(){
     var emps=await fetchAll();
     renderList(emps);
   }catch(e){
-    document.getElementById(‘loading-msg’).textContent=’Could not load. Please refresh. / No se pudo cargar. Recargue.’;
+    var lm=document.getElementById(‘loading-msg’);
+    lm.innerHTML=’Could not connect. / No se pudo conectar.<br><button onclick="loadAll()" style="margin-top:16px;padding:14px 32px;background:#1e3a5f;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer">Retry / Reintentar</button>’;
   }
 }
 
