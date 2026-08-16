@@ -24,7 +24,7 @@ from google.oauth2.service_account import Credentials as _SACredentials
 import qrcode as _qrlib
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from pyproj import Transformer
 from pydantic import BaseModel
 
@@ -153,6 +153,18 @@ def list_contacts():
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+        '<rect width="32" height="32" rx="4" fill="#1e3a5f"/>'
+        '<polygon points="16,5 29,16 25,16 25,27 19,27 19,20 13,20 13,27 7,27 7,16 3,16" fill="#ffffff"/>'
+        '</svg>'
+    )
+    return Response(content=svg.encode(), media_type="image/svg+xml",
+                    headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.post("/contacts/import")
