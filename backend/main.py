@@ -1958,10 +1958,10 @@ async function doAction(emp,actionType){
 }
 
 function showFlash(d){
-  // Any completed action switches to stay mode and clears the scan timer so
-  // the next QR scan (same or new tab) always starts a fresh 5-minute window.
+  // Any completed action switches to stay mode.
+  // scanTime is NOT cleared here — it must survive refreshes. It is only
+  // cleared when the session actually expires (in the timer IIFE below).
   sessionStorage.setItem('fromScan','false');
-  sessionStorage.removeItem('scanTime');
 
   var map={
     clock_in: {icon:'👋',msg:'Hi, '+d.name+'! / Hola!',         sub:'Clocked in at / Entrada a las '+d.time},
@@ -1997,10 +1997,12 @@ function showFlash(d){
 (function(){
   var TIMEOUT=300;
   var KEY='scanTime';
-  if(!sessionStorage.getItem(KEY)){
+  var _raw=sessionStorage.getItem(KEY);
+  if(!_raw){
     sessionStorage.setItem(KEY,String(Math.floor(Date.now()/1000)));
   }
   var t=parseInt(sessionStorage.getItem(KEY),10);
+  console.log('[tc] scanTime raw='+_raw+' isNew='+(!_raw)+' elapsed='+(Math.floor(Date.now()/1000)-t)+'s');
   var bar=document.getElementById('session-bar');
   var expired=false;
 
