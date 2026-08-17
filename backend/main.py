@@ -1610,7 +1610,7 @@ class TimeclockActionRequest(BaseModel):
 
 @app.get("/timeclock", response_class=HTMLResponse)
 def timeclock_page():
-    return HTMLResponse("""<!DOCTYPE html>
+    html = """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -2040,7 +2040,12 @@ function showFlash(d){
 init();
 </script>
 </body>
-</html>""")
+</html>"""
+    return HTMLResponse(content=html, headers={
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    })
 
 
 @app.get("/timeclock/qr")
