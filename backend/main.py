@@ -1704,14 +1704,11 @@ header p{font-size:.8rem;opacity:.7;margin-top:2px}
 <script>
 var currentEmp=null;
 
-// If the browser restores this page from bfcache (mobile back/forward), force a full
-// reload so the 5-minute session timer always starts fresh on every QR scan.
-window.addEventListener('pageshow',function(e){if(e.persisted){location.reload();}});
-
-// Scan mode: only set on first load in this tab (sessionStorage persists across
-// refreshes, so don't overwrite it — a refresh should not reset scan mode).
-if(sessionStorage.getItem('fromScan')===null){
-  sessionStorage.setItem('fromScan','true');
+// Scan/stay mode — stored in localStorage (survives pull-to-refresh and tab close).
+// Only initialize to scan mode when the key is completely absent (first ever visit
+// or after expiry reset it). Prefixed tc_ to avoid collision with tc_employee.
+if(localStorage.getItem('tc_fromScan')===null){
+  localStorage.setItem('tc_fromScan','true');
 }
 
 // Live clock — updates every second
@@ -1870,7 +1867,7 @@ function showAction(emp){
   var btns=document.getElementById('a-btns');
   btns.innerHTML='';
 
-  var scan=sessionStorage.getItem('fromScan')!=='false';
+  var scan=localStorage.getItem('tc_fromScan')!=='false';
   var st=emp.status;
 
   function scanMsg(txt){
@@ -1907,7 +1904,7 @@ function showAction(emp){
   document.getElementById('switch-link').textContent='Not '+emp.name+'? Switch / Cambiar empleado';
   document.getElementById('switch-link').onclick=function(){
     localStorage.removeItem('tc_employee');
-    sessionStorage.setItem('fromScan','true');
+    localStorage.setItem('tc_fromScan','true');
     currentEmp=null;
     loadAll();
   };
@@ -1929,7 +1926,7 @@ function showDoneForToday(){
   document.getElementById('switch-link').textContent='Not '+currentEmp.name+'? Switch / Cambiar empleado';
   document.getElementById('switch-link').onclick=function(){
     localStorage.removeItem('tc_employee');
-    sessionStorage.setItem('fromScan','true');
+    localStorage.setItem('tc_fromScan','true');
     currentEmp=null;
     loadAll();
   };
@@ -1959,9 +1956,9 @@ async function doAction(emp,actionType){
 
 function showFlash(d){
   // Any completed action switches to stay mode.
-  // scanTime is NOT cleared here — it must survive refreshes. It is only
-  // cleared when the session actually expires (in the timer IIFE below).
-  sessionStorage.setItem('fromScan','false');
+  // tc_scanTime is NOT cleared here — the 5-min window must survive refreshes.
+  // It is only cleared when the session expires (in the timer IIFE below).
+  localStorage.setItem('tc_fromScan','false');
 
   var map={
     clock_in: {icon:'👋',msg:'Hi, '+d.name+'! / Hola!',         sub:'Clocked in at / Entrada a las '+d.time},
@@ -1991,18 +1988,19 @@ function showFlash(d){
   },2200);
 }
 
-// Session timeout — anchored to first-load timestamp stored in sessionStorage.
-// Refreshes reuse the stored start so the 5-minute window is not reset.
-// On expiry the stored start is cleared so the next fresh tab/QR-scan starts clean.
+// Session timeout — stored in localStorage so it survives pull-to-refresh,
+// tab close/reopen, and all mobile reload types. Only initialized on first
+// load or after a previous session expired and was cleared.
 (function(){
   var TIMEOUT=300;
-  var KEY='scanTime';
-  var _raw=sessionStorage.getItem(KEY);
+  var TKEY='tc_scanTime';
+  var FKEY='tc_fromScan';
+  var _raw=localStorage.getItem(TKEY);
+  console.log('[tc] tc_scanTime raw='+_raw+' isNew='+(!_raw)+' elapsed='+(Math.floor(Date.now()/1000)-parseInt(_raw,10))+'s');
   if(!_raw){
-    sessionStorage.setItem(KEY,String(Math.floor(Date.now()/1000)));
+    localStorage.setItem(TKEY,String(Math.floor(Date.now()/1000)));
   }
-  var t=parseInt(sessionStorage.getItem(KEY),10);
-  console.log('[tc] scanTime raw='+_raw+' isNew='+(!_raw)+' elapsed='+(Math.floor(Date.now()/1000)-t)+'s');
+  var t=parseInt(localStorage.getItem(TKEY),10);
   var bar=document.getElementById('session-bar');
   var expired=false;
 
@@ -2019,7 +2017,9 @@ function showFlash(d){
   function expire(){
     if(expired)return;
     expired=true;
-    sessionStorage.removeItem(KEY);  // cleared so next QR scan starts a fresh session
+    // Clear timer and reset to scan mode so next page load requires a fresh QR scan
+    localStorage.removeItem(TKEY);
+    localStorage.setItem(FKEY,'true');
     if(bar){
       bar.textContent='Session expired. Scan the QR code again. / Sesion expirada. Escanee el codigo QR de nuevo.';
       bar.className='expired';
