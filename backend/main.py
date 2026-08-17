@@ -1958,8 +1958,10 @@ async function doAction(emp,actionType){
 }
 
 function showFlash(d){
-  // Any completed action switches to stay mode
+  // Any completed action switches to stay mode and clears the scan timer so
+  // the next QR scan (same or new tab) always starts a fresh 5-minute window.
   sessionStorage.setItem('fromScan','false');
+  sessionStorage.removeItem('scanTime');
 
   var map={
     clock_in: {icon:'👋',msg:'Hi, '+d.name+'! / Hola!',         sub:'Clocked in at / Entrada a las '+d.time},
@@ -1994,7 +1996,7 @@ function showFlash(d){
 // On expiry the stored start is cleared so the next fresh tab/QR-scan starts clean.
 (function(){
   var TIMEOUT=300;
-  var KEY='tc_session_start';
+  var KEY='scanTime';
   if(!sessionStorage.getItem(KEY)){
     sessionStorage.setItem(KEY,String(Math.floor(Date.now()/1000)));
   }
@@ -2015,7 +2017,7 @@ function showFlash(d){
   function expire(){
     if(expired)return;
     expired=true;
-    sessionStorage.removeItem(KEY);  // cleared so next page load starts a fresh session
+    sessionStorage.removeItem(KEY);  // cleared so next QR scan starts a fresh session
     if(bar){
       bar.textContent='Session expired. Scan the QR code again. / Sesion expirada. Escanee el codigo QR de nuevo.';
       bar.className='expired';
