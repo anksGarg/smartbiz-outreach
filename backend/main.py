@@ -2049,7 +2049,7 @@ def timeclock_action(req: TimeclockActionRequest):
         lunch_out = (open_row.get("lunch_out") or "").strip()
         lunch_in  = (open_row.get("lunch_in")  or "").strip()
         if lunch_out and not lunch_in:
-            notes = "Forgot to clock out from lunch"
+            notes = "Forgot to clock back in from lunch"
         elif not lunch_out:
             notes = "No lunch taken on shift"
         else:
