@@ -2007,10 +2007,6 @@ function showFlash(d){
   function remaining(){
     return TIMEOUT-(Math.floor(Date.now()/1000)-t);
   }
-  function fmt(s){
-    var m=Math.ceil(s/60);
-    return 'Session expires in / Sesion expira en '+m+' min';
-  }
   function disableAll(){
     document.querySelectorAll('.action-btn,.emp-btn').forEach(function(b){b.disabled=true;});
   }
@@ -2031,7 +2027,6 @@ function showFlash(d){
   function tick(){
     var r=remaining();
     if(r<=0){expire();return;}
-    if(bar)bar.textContent=fmt(r);
     setTimeout(tick,30000);
   }
   if(!t||isNaN(t)){expire();}else{tick();}
