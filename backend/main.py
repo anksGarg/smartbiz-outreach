@@ -1617,54 +1617,55 @@ def timeclock_page():
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Time Clock</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;min-height:100vh;display:flex;flex-direction:column}
-header{background:#1e3a5f;color:#fff;padding:16px 24px;text-align:center}
-header h1{font-size:1.2rem;font-weight:700}
-header p{font-size:.8rem;opacity:.7;margin-top:2px}
-#session-bar{padding:9px 16px;text-align:center;font-size:.82rem;font-weight:500;background:#f0fdf4;border-bottom:1px solid #bbf7d0;color:#16a34a;min-height:36px}
-#session-bar.expired{background:#fef2f2;border-color:#fecaca;color:#dc2626}
-#error-banner{display:none;background:#fef2f2;border-bottom:2px solid #fca5a5;color:#dc2626;padding:14px 20px;text-align:center;font-size:1rem;font-weight:600;line-height:1.4}
+* { box-sizing: border-box; margin: 0; padding: 0 }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; min-height: 100vh; display: flex; flex-direction: column }
+header { background: #1e3a5f; color: #fff; padding: 16px 24px; text-align: center }
+header h1 { font-size: 1.2rem; font-weight: 700 }
+header p  { font-size: .8rem; opacity: .7; margin-top: 2px }
 
-.screen{display:none;flex-direction:column;flex:1;padding:28px 20px}
-.screen.active{display:flex}
+/* Session expired banner — hidden until expiry */
+#session-bar { display: none; padding: 12px 16px; text-align: center; font-size: .95rem; font-weight: 600; background: #fef2f2; border-bottom: 2px solid #fca5a5; color: #dc2626 }
 
-/* Screen 1 */
-#s-who h2{text-align:center;font-size:1.3rem;font-weight:700;color:#1e293b;margin-bottom:6px}
-#s-who .sub{text-align:center;font-size:1rem;color:#94a3b8;margin-bottom:28px;line-height:1.5}
-.emp-btn{width:100%;background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:0 24px;margin-bottom:14px;font-size:1.2rem;font-weight:600;color:#1e293b;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;min-height:68px;display:flex;align-items:center}
-.emp-btn:active{background:#f1f5f9}
-.emp-btn:disabled{opacity:.45;cursor:not-allowed}
-#loading-msg{text-align:center;color:#94a3b8;padding:48px 0;font-size:1.1rem}
+#error-banner { display: none; background: #fef2f2; border-bottom: 2px solid #fca5a5; color: #dc2626; padding: 14px 20px; text-align: center; font-size: 1rem; font-weight: 600; line-height: 1.4 }
 
-/* Screen 2 */
-#s-action{align-items:center;text-align:center}
-.live-clock{font-size:2.4rem;font-weight:800;color:#1e3a5f;font-variant-numeric:tabular-nums;letter-spacing:.02em;margin-bottom:2px}
-.live-date{font-size:1rem;color:#94a3b8;margin-bottom:22px}
-.a-greeting{font-size:1.1rem;color:#64748b;font-weight:500}
-.a-name{font-size:2rem;font-weight:800;color:#1e293b;margin-bottom:6px;line-height:1.1}
-.a-status{font-size:1.05rem;color:#64748b;margin-bottom:28px;min-height:1.5em;line-height:1.4}
-#a-btns{display:flex;flex-direction:column;gap:14px;width:100%;max-width:400px}
-.action-btn{width:100%;min-height:68px;padding:16px 20px;border-radius:16px;border:none;font-size:1.15rem;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;line-height:1.35;text-align:center}
-.action-btn:disabled{opacity:.45;cursor:not-allowed}
-.btn-in{background:#16a34a;color:#fff}
-.btn-in:active:not(:disabled){background:#15803d}
-.btn-out{background:#dc2626;color:#fff}
-.btn-out:active:not(:disabled){background:#b91c1c}
-.btn-lunch{background:#d97706;color:#fff}
-.btn-lunch:active:not(:disabled){background:#b45309}
-.done-today{font-size:1.05rem;font-weight:600;color:#16a34a;padding:22px 24px;background:#f0fdf4;border-radius:14px;border:1.5px solid #bbf7d0;width:100%;text-align:center;line-height:1.5}
-.scan-prompt{font-size:1.05rem;font-weight:600;color:#1e3a5f;padding:22px 24px;background:#eff6ff;border-radius:14px;border:1.5px solid #bfdbfe;width:100%;text-align:center;line-height:1.6}
-.switch-link{font-size:.9rem;color:#94a3b8;cursor:pointer;padding:28px 16px;margin-top:auto;text-align:center;-webkit-tap-highlight-color:transparent;text-decoration:underline;text-underline-offset:3px}
-.switch-link:active{color:#64748b}
-.btn-sub{display:block;font-size:.82em;opacity:.8;font-weight:500;margin-top:2px}
+.screen { display: none; flex-direction: column; flex: 1; padding: 28px 20px }
+.screen.active { display: flex }
+
+/* Employee selection */
+#s-who h2 { text-align: center; font-size: 1.3rem; font-weight: 700; color: #1e293b; margin-bottom: 6px }
+#s-who .sub { text-align: center; font-size: 1rem; color: #94a3b8; margin-bottom: 28px; line-height: 1.5 }
+.emp-btn { width: 100%; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 0 24px; margin-bottom: 14px; font-size: 1.2rem; font-weight: 600; color: #1e293b; cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent; min-height: 68px; display: flex; align-items: center }
+.emp-btn:active { background: #f1f5f9 }
+.emp-btn:disabled { opacity: .45; cursor: not-allowed }
+#loading-msg { text-align: center; color: #94a3b8; padding: 48px 0; font-size: 1.1rem }
+
+/* Action screen */
+#s-action { align-items: center; text-align: center }
+.live-clock { font-size: 2.4rem; font-weight: 800; color: #1e3a5f; font-variant-numeric: tabular-nums; letter-spacing: .02em; margin-bottom: 2px }
+.live-date  { font-size: 1rem; color: #94a3b8; margin-bottom: 22px }
+.a-greeting { font-size: 1.1rem; color: #64748b; font-weight: 500 }
+.a-name     { font-size: 2rem; font-weight: 800; color: #1e293b; margin-bottom: 6px; line-height: 1.1 }
+.a-status   { font-size: 1.05rem; color: #64748b; margin-bottom: 28px; min-height: 1.5em; line-height: 1.4 }
+#a-btns { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 400px }
+.action-btn { width: 100%; min-height: 68px; padding: 16px 20px; border-radius: 16px; border: none; font-size: 1.15rem; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; line-height: 1.35; text-align: center }
+.action-btn:disabled { opacity: .45; cursor: not-allowed }
+.btn-in    { background: #16a34a; color: #fff }
+.btn-in:active:not(:disabled)    { background: #15803d }
+.btn-out   { background: #dc2626; color: #fff }
+.btn-out:active:not(:disabled)   { background: #b91c1c }
+.btn-lunch { background: #d97706; color: #fff }
+.btn-lunch:active:not(:disabled) { background: #b45309 }
+.done-today { font-size: 1.05rem; font-weight: 600; color: #16a34a; padding: 22px 24px; background: #f0fdf4; border-radius: 14px; border: 1.5px solid #bbf7d0; width: 100%; text-align: center; line-height: 1.5 }
+.switch-link { font-size: .9rem; color: #94a3b8; cursor: pointer; padding: 28px 16px; margin-top: auto; text-align: center; -webkit-tap-highlight-color: transparent; text-decoration: underline; text-underline-offset: 3px }
+.switch-link:active { color: #64748b }
+.btn-sub { display: block; font-size: .82em; opacity: .8; font-weight: 500; margin-top: 2px }
 
 /* Full-screen flash confirmation */
-#flash{display:none;position:fixed;inset:0;background:#16a34a;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 32px;z-index:200}
-#flash.active{display:flex}
-.flash-icon{font-size:88px;margin-bottom:24px}
-.flash-msg{font-size:1.9rem;font-weight:800;color:#fff;margin-bottom:10px;line-height:1.2}
-.flash-sub{font-size:1.1rem;color:rgba(255,255,255,.88);line-height:1.4}
+#flash { display: none; position: fixed; inset: 0; background: #16a34a; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 32px; z-index: 200 }
+#flash.active { display: flex }
+.flash-icon { font-size: 88px; margin-bottom: 24px }
+.flash-msg  { font-size: 1.9rem; font-weight: 800; color: #fff; margin-bottom: 10px; line-height: 1.2 }
+.flash-sub  { font-size: 1.1rem; color: rgba(255,255,255,.88); line-height: 1.4 }
 </style>
 </head>
 <body>
@@ -1675,362 +1676,304 @@ header p{font-size:.8rem;opacity:.7;margin-top:2px}
 <div id="session-bar"></div>
 <div id="error-banner"></div>
 
-<!-- Full-screen confirmation flash -->
 <div id="flash">
   <div class="flash-icon" id="flash-icon"></div>
   <div class="flash-msg"  id="flash-msg"></div>
   <div class="flash-sub"  id="flash-sub"></div>
 </div>
 
-<!-- Screen 1: Who are you? -->
 <div id="s-who" class="screen active">
   <div id="loading-msg">Loading&#8230;</div>
-  <h2 id="who-heading" style="display:none">Who are you? / ¿Quién eres?</h2>
+  <h2 id="who-heading" style="display:none">Who are you? / Quien eres?</h2>
   <p class="sub" id="who-sub" style="display:none">Tap your name / Toca tu nombre</p>
   <div id="emp-list"></div>
 </div>
 
-<!-- Screen 2: Action -->
 <div id="s-action" class="screen">
   <div class="live-clock" id="live-clock"></div>
   <div class="live-date"  id="live-date"></div>
   <div class="a-greeting">Hi / Hola,</div>
-  <div class="a-name" id="a-name"></div>
+  <div class="a-name"   id="a-name"></div>
   <div class="a-status" id="a-status"></div>
   <div id="a-btns"></div>
   <div class="switch-link" id="switch-link"></div>
 </div>
 
 <script>
-var currentEmp=null;
+// === State ===
+var currentEmp = null;
+var pageLoadTime = Math.floor(Date.now() / 1000);
 
-// Scan/stay mode — stored in localStorage (survives pull-to-refresh and tab close).
-// Only initialize to scan mode when the key is completely absent (first ever visit
-// or after expiry reset it). Prefixed tc_ to avoid collision with tc_employee.
-if(localStorage.getItem('tc_fromScan')===null){
-  localStorage.setItem('tc_fromScan','true');
-}
-
-// Live clock — updates every second
-function updateClock(){
-  var now=new Date();
-  var h=now.getHours(),m=now.getMinutes();
-  var ap=h>=12?'PM':'AM';var h12=h%12||12;
-  var cl=document.getElementById('live-clock');
-  var dl=document.getElementById('live-date');
-  if(cl)cl.textContent=h12+':'+(m<10?'0':'')+m+' '+ap;
-  if(dl){
-    var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    var mos=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    dl.textContent=days[now.getDay()]+', '+mos[now.getMonth()]+' '+now.getDate();
+// === Live Clock ===
+function updateClock() {
+  var now = new Date();
+  var h = now.getHours(), m = now.getMinutes();
+  var ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+  var cl = document.getElementById('live-clock');
+  var dl = document.getElementById('live-date');
+  if (cl) cl.textContent = h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap;
+  if (dl) {
+    var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var mos  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    dl.textContent = days[now.getDay()] + ', ' + mos[now.getMonth()] + ' ' + now.getDate();
   }
 }
-updateClock();setInterval(updateClock,10000);
+updateClock(); setInterval(updateClock, 10000);
 
-function fmtHHMM(s){
-  if(!s)return'';
-  var m=s.match(/(\\d{1,2}):(\\d{2})/);
-  if(!m)return s;
-  var h=parseInt(m[1]),mn=parseInt(m[2]);
-  var ap=h>=12?'PM':'AM';h=h%12||12;
-  return h+':'+(mn<10?'0':'')+mn+' '+ap;
+// === Helpers ===
+function fmtHHMM(s) {
+  if (!s) return '';
+  var m = s.match(/(\\d{1,2}):(\\d{2})/);
+  if (!m) return s;
+  var h = parseInt(m[1]), mn = parseInt(m[2]);
+  var ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+  return h + ':' + (mn < 10 ? '0' : '') + mn + ' ' + ap;
 }
 
-function showError(msg){
-  var b=document.getElementById('error-banner');
-  b.innerHTML=msg;b.style.display='block';
-  setTimeout(function(){b.style.display='none';},6000);
+function showError(msg) {
+  var b = document.getElementById('error-banner');
+  b.innerHTML = msg; b.style.display = 'block';
+  setTimeout(function() { b.style.display = 'none'; }, 6000);
 }
 
-function show(id){
-  ['s-who','s-action'].forEach(function(s){
-    document.getElementById(s).classList.toggle('active',s===id);
+function showScreen(id) {
+  ['s-who', 's-action'].forEach(function(s) {
+    document.getElementById(s).classList.toggle('active', s === id);
   });
 }
 
-async function fetchAll(){
-  console.log('[tc] fetchAll: starting fetch /employees');
-  var ctrl=new AbortController();
-  var tid=setTimeout(function(){
-    console.log('[tc] fetchAll: 10s timeout reached, aborting');
-    ctrl.abort();
-  },10000);
-  try{
-    var r=await fetch('/employees',{signal:ctrl.signal});
-    console.log('[tc] fetchAll: response received, status='+r.status);
-    var d=await r.json();
-    console.log('[tc] fetchAll: parsed JSON, employee count='+(d.employees||[]).length);
-    return d.employees||[];
-  }finally{
+function makeBtn(label, sub, cls, handler) {
+  var b = document.createElement('button');
+  b.className = 'action-btn ' + cls;
+  b.innerHTML = label + (sub ? '<span class="btn-sub">' + sub + '</span>' : '');
+  b.onclick = handler;
+  return b;
+}
+
+function switchEmployee() {
+  localStorage.removeItem('tc_employee');
+  currentEmp = null;
+  loadAll();
+}
+
+// === Session Timer ===
+// 5-minute window from page load. Silent until expiry, then disables all buttons.
+(function() {
+  var TIMEOUT = 300;
+  var bar = document.getElementById('session-bar');
+  var expired = false;
+
+  function disableAll() {
+    document.querySelectorAll('.action-btn, .emp-btn').forEach(function(b) { b.disabled = true; });
+  }
+  function expire() {
+    if (expired) return;
+    expired = true;
+    if (bar) {
+      bar.textContent = 'Session expired. Scan the QR code again. / Sesion expirada. Escanee el codigo QR de nuevo.';
+      bar.style.display = 'block';
+    }
+    disableAll();
+    new MutationObserver(disableAll).observe(document.body, {childList: true, subtree: true});
+  }
+  function tick() {
+    if (Math.floor(Date.now() / 1000) - pageLoadTime >= TIMEOUT) { expire(); return; }
+    setTimeout(tick, 30000);
+  }
+  tick();
+})();
+
+// === Employee Selection ===
+var loadingFallback = setTimeout(function() {
+  var lm = document.getElementById('loading-msg');
+  if (lm && lm.style.display !== 'none' && !lm.innerHTML.includes('Retry')) {
+    lm.innerHTML = 'Taking too long. Please refresh.<br>Tardando demasiado. Por favor recargue.' +
+      '<br><button onclick="location.reload()" style="margin-top:16px;padding:14px 32px;background:#1e3a5f;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer">Refresh / Recargar</button>';
+  }
+}, 10000);
+
+async function fetchEmployees() {
+  var ctrl = new AbortController();
+  var tid = setTimeout(function() { ctrl.abort(); }, 10000);
+  try {
+    var r = await fetch('/employees', {signal: ctrl.signal});
+    var d = await r.json();
+    return d.employees || [];
+  } finally {
     clearTimeout(tid);
   }
 }
 
-function makeBtn(label,sub,cls,handler){
-  var b=document.createElement('button');
-  b.className='action-btn '+cls;
-  b.innerHTML=label+(sub?'<span class="btn-sub">'+sub+'</span>':'');
-  b.onclick=handler;
-  return b;
+function showConnectError() {
+  var lm = document.getElementById('loading-msg');
+  lm.style.display = 'block';
+  lm.innerHTML = 'Could not connect. Please check your connection and try again.' +
+    '<br>No se pudo conectar. Por favor verifique su conexion e intente de nuevo.' +
+    '<br><button onclick="loadAll()" style="margin-top:16px;padding:14px 32px;background:#1e3a5f;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer">Retry / Reintentar</button>';
 }
 
-function showConnectError(){
-  var lm=document.getElementById('loading-msg');
-  lm.style.display='block';
-  lm.innerHTML='Could not connect. Please check your connection and try again.<br>No se pudo conectar. Por favor verifique su conexión e intente de nuevo.<br><button onclick="loadAll()" style="margin-top:16px;padding:14px 32px;background:#1e3a5f;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer">Retry / Reintentar</button>';
-}
-
-// 10-second global fallback: if still loading, show a message
-var _loadingTimer=setTimeout(function(){
-  var lm=document.getElementById('loading-msg');
-  if(lm&&lm.style.display!=='none'&&!lm.innerHTML.includes('Retry')){
-    console.log('[tc] fallback: still loading after 10s');
-    lm.innerHTML='Taking too long. Please refresh.<br>Tardando demasiado. Por favor recargue.<br><button onclick="location.reload()" style="margin-top:16px;padding:14px 32px;background:#1e3a5f;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer">Refresh / Recargar</button>';
-  }
-},10000);
-
-async function init(){
-  var saved=null;
-  try{saved=JSON.parse(localStorage.getItem('tc_employee'))}catch(e){
-    console.log('[tc] init: localStorage parse error='+e);
+async function init() {
+  var saved = null;
+  try { saved = JSON.parse(localStorage.getItem('tc_employee')); } catch(e) {
     localStorage.removeItem('tc_employee');
   }
-  console.log('[tc] init: localStorage saved='+(saved?saved.name:'none'));
-  if(saved&&saved.id){
-    show('s-action');
-    document.getElementById('a-name').textContent=saved.name;
-    document.getElementById('a-status').textContent='Loading…';
-    document.getElementById('a-btns').innerHTML='';
-    document.getElementById('switch-link').textContent='';
-    try{
-      var emps=await fetchAll();
-      var emp=emps.find(function(e){return e.id===saved.id});
-      console.log('[tc] init: saved employee found in list='+(!!emp));
-      if(emp){clearTimeout(_loadingTimer);showAction(emp);return;}
-      // Stale ID — clear and fall through to employee selection
-      console.log('[tc] init: stale employee ID, clearing localStorage');
+  if (saved && saved.id) {
+    showScreen('s-action');
+    document.getElementById('a-name').textContent = saved.name;
+    document.getElementById('a-status').textContent = 'Loading...';
+    document.getElementById('a-btns').innerHTML = '';
+    document.getElementById('switch-link').textContent = '';
+    try {
+      var emps = await fetchEmployees();
+      var emp = emps.find(function(e) { return e.id === saved.id; });
+      if (emp) { clearTimeout(loadingFallback); showAction(emp); return; }
       localStorage.removeItem('tc_employee');
-    }catch(e){
-      console.log('[tc] init: fetchAll error='+e);
-      show('s-who');
-      showConnectError();
-      return;
+    } catch(e) {
+      showScreen('s-who'); showConnectError(); return;
     }
   }
   loadAll();
 }
 
-async function loadAll(){
-  console.log('[tc] loadAll: starting');
-  show('s-who');
-  document.getElementById('loading-msg').style.display='block';
-  document.getElementById('who-heading').style.display='none';
-  document.getElementById('who-sub').style.display='none';
-  document.getElementById('emp-list').innerHTML='';
-  try{
-    var emps=await fetchAll();
-    console.log('[tc] loadAll: rendering '+emps.length+' employees');
-    clearTimeout(_loadingTimer);
+async function loadAll() {
+  showScreen('s-who');
+  document.getElementById('loading-msg').style.display = 'block';
+  document.getElementById('who-heading').style.display = 'none';
+  document.getElementById('who-sub').style.display = 'none';
+  document.getElementById('emp-list').innerHTML = '';
+  try {
+    var emps = await fetchEmployees();
+    clearTimeout(loadingFallback);
     renderList(emps);
-  }catch(e){
-    console.log('[tc] loadAll: fetchAll error='+e);
+  } catch(e) {
     showConnectError();
   }
 }
 
-function renderList(emps){
-  document.getElementById('loading-msg').style.display='none';
-  var list=document.getElementById('emp-list');
-  if(!emps.length){
-    list.innerHTML='<p style="text-align:center;color:#94a3b8;padding:40px 0;font-size:1.1rem">No employees set up yet.</p>';
+function renderList(emps) {
+  document.getElementById('loading-msg').style.display = 'none';
+  var list = document.getElementById('emp-list');
+  if (!emps.length) {
+    list.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:40px 0;font-size:1.1rem">No employees set up yet.</p>';
     return;
   }
-  document.getElementById('who-heading').style.display='block';
-  document.getElementById('who-sub').style.display='block';
-  list.innerHTML='';
-  emps.forEach(function(emp){
-    var btn=document.createElement('button');
-    btn.className='emp-btn';
-    btn.textContent=emp.name;
-    btn.addEventListener('click',function(){
-      localStorage.setItem('tc_employee',JSON.stringify({id:emp.id,name:emp.name}));
+  document.getElementById('who-heading').style.display = 'block';
+  document.getElementById('who-sub').style.display = 'block';
+  list.innerHTML = '';
+  emps.forEach(function(emp) {
+    var btn = document.createElement('button');
+    btn.className = 'emp-btn';
+    btn.textContent = emp.name;
+    btn.addEventListener('click', function() {
+      localStorage.setItem('tc_employee', JSON.stringify({id: emp.id, name: emp.name}));
       showAction(emp);
     });
     list.appendChild(btn);
   });
 }
 
-function showAction(emp){
-  currentEmp=emp;
-  document.getElementById('a-name').textContent=emp.name;
-  var statusEl=document.getElementById('a-status');
-  var btns=document.getElementById('a-btns');
-  btns.innerHTML='';
+// === Action Buttons ===
+function showAction(emp) {
+  currentEmp = emp;
+  document.getElementById('a-name').textContent = emp.name;
+  var statusEl = document.getElementById('a-status');
+  var btns = document.getElementById('a-btns');
+  btns.innerHTML = '';
+  var st = emp.status;
 
-  var scan=localStorage.getItem('tc_fromScan')!=='false';
-  var st=emp.status;
+  if (st === 'not_clocked_in') {
+    statusEl.textContent = 'Not clocked in yet / No registrado aun';
+    btns.appendChild(makeBtn('🏠 Start the Work Day', 'Registrar Entrada', 'btn-in',
+      function() { doAction(emp, 'clock_in'); }));
 
-  function scanMsg(txt){
-    var p=document.createElement('div');
-    p.className='scan-prompt';
-    p.textContent=txt;
-    btns.appendChild(p);
+  } else if (st === 'clocked_in' || st === 'returned_from_lunch') {
+    statusEl.textContent = 'Clocked in at / Entrada a las ' + fmtHHMM(emp.clock_in_time);
+    btns.appendChild(makeBtn('🍔 Going for Lunch', 'Salida a Almuerzo', 'btn-lunch',
+      function() { doAction(emp, 'lunch_out'); }));
+    btns.appendChild(makeBtn('🏁 Done for the Day', 'Registrar Salida', 'btn-out',
+      function() { doAction(emp, 'clock_out'); }));
+
+  } else if (st === 'on_lunch') {
+    statusEl.textContent = 'On lunch since / En almuerzo desde ' + fmtHHMM(emp.lunch_out_time);
+    btns.appendChild(makeBtn('🥪 Back from Lunch', 'Regreso de Almuerzo', 'btn-in',
+      function() { doAction(emp, 'lunch_in'); }));
+    btns.appendChild(makeBtn('🏁 Done for the Day', 'Fin del dia', 'btn-out',
+      function() { doAction(emp, 'clock_out'); }));
   }
 
-  if(st==='not_clocked_in'){
-    // Clock In available in both modes
-    statusEl.textContent='Not clocked in yet / No registrado aun';
-    btns.appendChild(makeBtn('🏠 Start the Work Day','Registrar Entrada','btn-in',function(){doAction(emp,'clock_in')}));
-
-  } else if(st==='clocked_in'||st==='returned_from_lunch'){
-    // returned_from_lunch is treated as clocked_in for display
-    statusEl.textContent='Clocked in at / Entrada a las '+fmtHHMM(emp.clock_in_time);
-    if(scan){
-      btns.appendChild(makeBtn('🍔 Going for Lunch','Salida a Almuerzo','btn-lunch',function(){doAction(emp,'lunch_out')}));
-      btns.appendChild(makeBtn('🏁 Done for the Day','Registrar Salida','btn-out',function(){doAction(emp,'clock_out')}));
-    } else {
-      scanMsg('Scan QR code to continue / Escanee el codigo QR para continuar');
-    }
-
-  } else if(st==='on_lunch'){
-    statusEl.textContent='On lunch since / En almuerzo desde '+fmtHHMM(emp.lunch_out_time);
-    if(scan){
-      btns.appendChild(makeBtn('🥪 Back from Lunch','Regreso de Almuerzo','btn-in',function(){doAction(emp,'lunch_in')}));
-    } else {
-      scanMsg('Scan QR code to continue / Escanee el codigo QR para continuar');
-    }
-  }
-
-  document.getElementById('switch-link').textContent='Not '+emp.name+'? Switch / Cambiar empleado';
-  document.getElementById('switch-link').onclick=function(){
-    localStorage.removeItem('tc_employee');
-    localStorage.setItem('tc_fromScan','true');
-    currentEmp=null;
-    loadAll();
-  };
-  show('s-action');
+  var sl = document.getElementById('switch-link');
+  sl.textContent = 'Not ' + emp.name + '? Switch / Cambiar empleado';
+  sl.onclick = switchEmployee;
+  showScreen('s-action');
 }
 
-function showDoneForToday(){
-  if(!currentEmp){loadAll();return;}
-  document.getElementById('a-name').textContent=currentEmp.name;
-  document.getElementById('a-status').textContent='';
-  var btns=document.getElementById('a-btns');
-  btns.innerHTML='';
-  var d=document.createElement('div');
-  d.className='done-today';
-  d.innerHTML="🎉 You're clocked out. See you later! / ¡Hasta luego!";
-  btns.appendChild(d);
-  var emp=currentEmp;
-  btns.appendChild(makeBtn('🏠 Start the Work Day','Registrar Entrada','btn-in',function(){doAction(emp,'clock_in')}));
-  document.getElementById('switch-link').textContent='Not '+currentEmp.name+'? Switch / Cambiar empleado';
-  document.getElementById('switch-link').onclick=function(){
-    localStorage.removeItem('tc_employee');
-    localStorage.setItem('tc_fromScan','true');
-    currentEmp=null;
-    loadAll();
-  };
-  show('s-action');
+function showDoneForToday() {
+  if (!currentEmp) { loadAll(); return; }
+  document.getElementById('a-name').textContent = currentEmp.name;
+  document.getElementById('a-status').textContent = '';
+  var btns = document.getElementById('a-btns');
+  btns.innerHTML = '';
+  var msg = document.createElement('div');
+  msg.className = 'done-today';
+  msg.textContent = 'You are clocked out. See you later! / Hasta luego!';
+  btns.appendChild(msg);
+  var emp = currentEmp;
+  btns.appendChild(makeBtn('🏠 Start the Work Day', 'Registrar Entrada', 'btn-in',
+    function() { doAction(emp, 'clock_in'); }));
+  var sl = document.getElementById('switch-link');
+  sl.textContent = 'Not ' + currentEmp.name + '? Switch / Cambiar empleado';
+  sl.onclick = switchEmployee;
+  showScreen('s-action');
 }
 
-async function doAction(emp,actionType){
-  document.querySelectorAll('#a-btns button').forEach(function(b){b.disabled=true;});
-  try{
-    var r=await fetch('/timeclock/action',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({employee_id:emp.id,action:actionType})
+// === API Calls ===
+async function doAction(emp, actionType) {
+  document.querySelectorAll('#a-btns button').forEach(function(b) { b.disabled = true; });
+  try {
+    var r = await fetch('/timeclock/action', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({employee_id: emp.id, action: actionType})
     });
-    if(!r.ok){
+    if (!r.ok) {
       showAction(emp);
-      showError('Something went wrong (error '+r.status+'). Please try again.<br>Algo salió mal. Por favor intente de nuevo.');
+      showError('Something went wrong (error ' + r.status + '). Please try again.' +
+        '<br>Algo salio mal. Por favor intente de nuevo.');
       return;
     }
-    var d=await r.json();
-    showFlash(d);
-  }catch(e){
+    showFlash(await r.json());
+  } catch(e) {
     showAction(emp);
-    showError('Could not reach the server. Check your connection.<br>No se pudo conectar. Verifique su conexión.');
+    showError('Could not reach the server. Check your connection.' +
+      '<br>No se pudo conectar. Verifique su conexion.');
   }
 }
 
-function showFlash(d){
-  // Any completed action switches to stay mode.
-  // tc_scanTime is NOT cleared here — the 5-min window must survive refreshes.
-  // It is only cleared when the session expires (in the timer IIFE below).
-  localStorage.setItem('tc_fromScan','false');
-
-  var map={
-    clock_in: {icon:'👋',msg:'Hi, '+d.name+'! / Hola!',         sub:'Clocked in at / Entrada a las '+d.time},
-    clock_out:{icon:'✅',msg:'Goodbye! / Hasta luego, '+d.name+'!',sub:'Clocked out at / Salida a las '+d.time},
-    lunch_out:{icon:'🍔',msg:'Enjoy lunch! / Buen provecho!',     sub:'Lunch out at / Almuerzo desde '+d.time},
-    lunch_in: {icon:'💼',msg:'Welcome back, '+d.name+'!',         sub:'Back at / Regreso a las '+d.time}
+function showFlash(d) {
+  var map = {
+    clock_in:  {icon: '👋', msg: 'Hi, ' + d.name + '! / Hola!',            sub: 'Clocked in at / Entrada a las ' + d.time},
+    clock_out: {icon: '✅', msg: 'Goodbye! / Hasta luego, ' + d.name + '!', sub: 'Clocked out at / Salida a las ' + d.time},
+    lunch_out: {icon: '🍔', msg: 'Enjoy lunch! / Buen provecho!',            sub: 'Lunch out at / Almuerzo desde ' + d.time},
+    lunch_in:  {icon: '💼', msg: 'Welcome back, ' + d.name + '!',            sub: 'Back at / Regreso a las ' + d.time}
   };
-  var m=map[d.action]||{icon:'✅',msg:d.name,sub:d.time};
-  document.getElementById('flash-icon').textContent=m.icon;
-  document.getElementById('flash-msg').textContent=m.msg;
-  document.getElementById('flash-sub').textContent=m.sub;
-  document.getElementById('flash').className='active';
-  setTimeout(async function(){
-    document.getElementById('flash').className='';
-    if(d.action==='clock_out'){
-      showDoneForToday();
-      return;
-    }
-    if(currentEmp){
-      try{
-        var emps=await fetchAll();
-        var emp=emps.find(function(e){return e.id===currentEmp.id});
-        if(emp){showAction(emp);return;}
-      }catch(e){}
+  var m = map[d.action] || {icon: '✅', msg: d.name, sub: d.time};
+  document.getElementById('flash-icon').textContent = m.icon;
+  document.getElementById('flash-msg').textContent  = m.msg;
+  document.getElementById('flash-sub').textContent  = m.sub;
+  document.getElementById('flash').className = 'active';
+  setTimeout(async function() {
+    document.getElementById('flash').className = '';
+    if (d.action === 'clock_out') { showDoneForToday(); return; }
+    if (currentEmp) {
+      try {
+        var emps = await fetchEmployees();
+        var emp = emps.find(function(e) { return e.id === currentEmp.id; });
+        if (emp) { showAction(emp); return; }
+      } catch(e) {}
     }
     loadAll();
-  },2200);
+  }, 2200);
 }
-
-// Session timeout — stored in localStorage so it survives pull-to-refresh,
-// tab close/reopen, and all mobile reload types. Only initialized on first
-// load or after a previous session expired and was cleared.
-(function(){
-  var TIMEOUT=300;
-  var TKEY='tc_scanTime';
-  var FKEY='tc_fromScan';
-  var _raw=localStorage.getItem(TKEY);
-  console.log('[tc] tc_scanTime raw='+_raw+' isNew='+(!_raw)+' elapsed='+(Math.floor(Date.now()/1000)-parseInt(_raw,10))+'s');
-  if(!_raw){
-    localStorage.setItem(TKEY,String(Math.floor(Date.now()/1000)));
-  }
-  var t=parseInt(localStorage.getItem(TKEY),10);
-  var bar=document.getElementById('session-bar');
-  var expired=false;
-
-  function remaining(){
-    return TIMEOUT-(Math.floor(Date.now()/1000)-t);
-  }
-  function disableAll(){
-    document.querySelectorAll('.action-btn,.emp-btn').forEach(function(b){b.disabled=true;});
-  }
-  function expire(){
-    if(expired)return;
-    expired=true;
-    // Clear timer and reset to scan mode so next page load requires a fresh QR scan
-    localStorage.removeItem(TKEY);
-    localStorage.setItem(FKEY,'true');
-    if(bar){
-      bar.textContent='Session expired. Scan the QR code again. / Sesion expirada. Escanee el codigo QR de nuevo.';
-      bar.className='expired';
-    }
-    disableAll();
-    var obs=new MutationObserver(disableAll);
-    obs.observe(document.body,{childList:true,subtree:true});
-  }
-  function tick(){
-    var r=remaining();
-    if(r<=0){expire();return;}
-    setTimeout(tick,30000);
-  }
-  if(!t||isNaN(t)){expire();}else{tick();}
-})();
 
 init();
 </script>
@@ -2106,9 +2049,9 @@ def timeclock_action(req: TimeclockActionRequest):
         lunch_out = (open_row.get("lunch_out") or "").strip()
         lunch_in  = (open_row.get("lunch_in")  or "").strip()
         if lunch_out and not lunch_in:
-            notes = "missed lunch clock-in"   # left for lunch, never clocked back in
+            notes = "Forgot to clock out from lunch"
         elif not lunch_out:
-            notes = "no lunch taken on shift"
+            notes = "No lunch taken on shift"
         else:
             notes = ""
         _update_clock_out(entry_id, now_time, ci_full, lunch_out, "", notes=notes)
