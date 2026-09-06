@@ -1,8 +1,9 @@
 # Data files — too large for git
 backend/data/TAXLOTS/
-backend/data/rlis_cache.csv
 backend/data/rlis_free_addresses.zip
+backend/data/rlis_free_addresses/
 backend/data/*.csv
+!backend/data/rlis_cache.csv
 
 # Python
 __pycache__/

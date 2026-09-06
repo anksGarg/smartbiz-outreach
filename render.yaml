@@ -3,7 +3,7 @@ services:
     name: smartbiz-outreach
     runtime: python
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && mkdir -p /data && cp -n data/rlis_cache.csv /data/rlis_cache.csv
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: RLIS_DATA_DIR
