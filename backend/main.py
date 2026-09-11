@@ -1413,6 +1413,19 @@ def _today_status(employee_id: str, timesheets: list[dict]) -> str:
     return "clocked_in"
 
 
+def _lunch_taken_today(employee_id: str, timesheets: list[dict], today: str) -> bool:
+    """True if any row today for this employee already has both lunch_out and lunch_in
+    filled — i.e. a completed lunch. Checked across all of today's rows (not just the
+    open one) so a new clock-in session after a completed lunch doesn't offer it again."""
+    return any(
+        t.get("employee_id") == employee_id
+        and _row_date(t) == today
+        and not _is_blank(t.get("lunch_out"))
+        and not _is_blank(t.get("lunch_in"))
+        for t in timesheets
+    )
+
+
 def _fmt_clock(time_str: str) -> str:
     """Convert 'HH:MM', 'YYYY-MM-DD HH:MM', or ISO timestamp to '9:30 AM' display format."""
     try:
@@ -1547,9 +1560,10 @@ def list_employees():
         )
         result.append({
             **emp,
-            "status":         status,
-            "clock_in_time":  open_row.get("clock_in")   if open_row else None,
-            "lunch_out_time": open_row.get("lunch_out")  if open_row else None,
+            "status":            status,
+            "clock_in_time":     open_row.get("clock_in")   if open_row else None,
+            "lunch_out_time":    open_row.get("lunch_out")  if open_row else None,
+            "already_had_lunch": _lunch_taken_today(emp["id"], timesheets, today),
         })
     return {"employees": result}
 
@@ -1912,8 +1926,10 @@ function showAction(emp) {
 
   } else if (st === 'clocked_in' || st === 'returned_from_lunch') {
     statusEl.textContent = 'Clocked in at / Entrada a las ' + fmtHHMM(emp.clock_in_time);
-    btns.appendChild(makeBtn('🍔 Going for Lunch', 'Salida a Almuerzo', 'btn-lunch',
-      function() { doAction(emp, 'lunch_out'); }));
+    if (!emp.already_had_lunch) {
+      btns.appendChild(makeBtn('🍔 Going for Lunch', 'Salida a Almuerzo', 'btn-lunch',
+        function() { doAction(emp, 'lunch_out'); }));
+    }
     btns.appendChild(makeBtn('🏁 Done for the Day', 'Registrar Salida', 'btn-out',
       function() { doAction(emp, 'clock_out'); }));
 
@@ -2066,6 +2082,8 @@ def timeclock_action(req: TimeclockActionRequest):
     entry_id = open_row.get("id", "")
 
     if req.action == "lunch_out":
+        if _lunch_taken_today(emp["id"], timesheets, today):
+            raise HTTPException(status_code=400, detail="Lunch already taken today.")
         _update_cell(entry_id, 5, now_time)  # col 5 = lunch_out
         return {"action": "lunch_out", "name": emp["name"], "time": now_disp}
 
