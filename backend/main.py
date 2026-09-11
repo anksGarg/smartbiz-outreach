@@ -1660,6 +1660,10 @@ header p  { font-size: .8rem; opacity: .7; margin-top: 2px }
 .switch-link:active { color: #64748b }
 .btn-sub { display: block; font-size: .82em; opacity: .8; font-weight: 500; margin-top: 2px }
 
+/* Refresh-detected screen */
+#s-refresh { align-items: center; justify-content: center; text-align: center }
+.refresh-card { font-size: 1.05rem; font-weight: 600; color: #1e3a5f; padding: 22px 24px; background: #eff6ff; border-radius: 14px; border: 1.5px solid #bfdbfe; width: 100%; max-width: 400px; text-align: center; line-height: 1.5 }
+
 /* Full-screen flash confirmation */
 #flash { display: none; position: fixed; inset: 0; background: #16a34a; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 32px; z-index: 200 }
 #flash.active { display: flex }
@@ -1699,10 +1703,22 @@ header p  { font-size: .8rem; opacity: .7; margin-top: 2px }
   <div class="switch-link" id="switch-link"></div>
 </div>
 
+<div id="s-refresh" class="screen">
+  <div class="refresh-card">Please scan the QR code again.<br>Por favor escanee el c&#243;digo QR de nuevo.</div>
+</div>
+
 <script>
 // === State ===
 var currentEmp = null;
-var pageLoadTime = Math.floor(Date.now() / 1000);
+
+// === Refresh Detection ===
+// Navigation Timing API tells us whether this load was a reload (including
+// pull-to-refresh) vs. a fresh navigation (QR scan, new tab, back/forward).
+// Note: this only catches the literal refresh/pull-to-refresh gesture. It does
+// NOT prevent someone from closing and reopening the same QR link, which looks
+// identical to a real fresh scan. This is a UX nicety, not a security control.
+var navEntries = performance.getEntriesByType('navigation');
+var navType = navEntries.length ? navEntries[0].type : 'navigate';
 
 // === Live Clock ===
 function updateClock() {
@@ -1737,7 +1753,7 @@ function showError(msg) {
 }
 
 function showScreen(id) {
-  ['s-who', 's-action'].forEach(function(s) {
+  ['s-who', 's-action', 's-refresh'].forEach(function(s) {
     document.getElementById(s).classList.toggle('active', s === id);
   });
 }
@@ -1757,9 +1773,15 @@ function switchEmployee() {
 }
 
 // === Session Timer ===
-// 5-minute window from page load. Silent until expiry, then disables all buttons.
-(function() {
-  var TIMEOUT = 300;
+// 15-minute window, started fresh on every non-reload page load. Uses
+// localStorage (not sessionStorage) since sessionStorage doesn't reliably
+// survive pull-to-refresh on some mobile browsers. Silent until expiry,
+// then disables all buttons.
+function startSessionTimer() {
+  var TIMEOUT = 900;
+  var scanTime = Math.floor(Date.now() / 1000);
+  localStorage.setItem('tc_scanTime', String(scanTime));
+
   var bar = document.getElementById('session-bar');
   var expired = false;
 
@@ -1769,6 +1791,7 @@ function switchEmployee() {
   function expire() {
     if (expired) return;
     expired = true;
+    localStorage.removeItem('tc_scanTime');
     if (bar) {
       bar.textContent = 'Session expired. Scan the QR code again. / Sesion expirada. Escanee el codigo QR de nuevo.';
       bar.style.display = 'block';
@@ -1777,11 +1800,12 @@ function switchEmployee() {
     new MutationObserver(disableAll).observe(document.body, {childList: true, subtree: true});
   }
   function tick() {
-    if (Math.floor(Date.now() / 1000) - pageLoadTime >= TIMEOUT) { expire(); return; }
+    var started = parseInt(localStorage.getItem('tc_scanTime'), 10);
+    if (!started || Math.floor(Date.now() / 1000) - started >= TIMEOUT) { expire(); return; }
     setTimeout(tick, 30000);
   }
   tick();
-})();
+}
 
 // === Employee Selection ===
 var loadingFallback = setTimeout(function() {
@@ -1975,7 +1999,12 @@ function showFlash(d) {
   }, 2200);
 }
 
-init();
+if (navType === 'reload') {
+  showScreen('s-refresh');
+} else {
+  startSessionTimer();
+  init();
+}
 </script>
 </body>
 </html>"""
