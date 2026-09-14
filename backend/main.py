@@ -1669,7 +1669,6 @@ header p  { font-size: .8rem; opacity: .7; margin-top: 2px }
 .btn-out:active:not(:disabled)   { background: #b91c1c }
 .btn-lunch { background: #d97706; color: #fff }
 .btn-lunch:active:not(:disabled) { background: #b45309 }
-.done-today { font-size: 1.05rem; font-weight: 600; color: #16a34a; padding: 22px 24px; background: #f0fdf4; border-radius: 14px; border: 1.5px solid #bbf7d0; width: 100%; text-align: center; line-height: 1.5 }
 .switch-link { font-size: .9rem; color: #94a3b8; cursor: pointer; padding: 28px 16px; margin-top: auto; text-align: center; -webkit-tap-highlight-color: transparent; text-decoration: underline; text-underline-offset: 3px }
 .switch-link:active { color: #64748b }
 .btn-sub { display: block; font-size: .82em; opacity: .8; font-weight: 500; margin-top: 2px }
@@ -1947,25 +1946,6 @@ function showAction(emp) {
   showScreen('s-action');
 }
 
-function showDoneForToday() {
-  if (!currentEmp) { loadAll(); return; }
-  document.getElementById('a-name').textContent = currentEmp.name;
-  document.getElementById('a-status').textContent = '';
-  var btns = document.getElementById('a-btns');
-  btns.innerHTML = '';
-  var msg = document.createElement('div');
-  msg.className = 'done-today';
-  msg.textContent = 'You are clocked out. See you later! / Hasta luego!';
-  btns.appendChild(msg);
-  var emp = currentEmp;
-  btns.appendChild(makeBtn('🏠 Start the Work Day', 'Registrar Entrada', 'btn-in',
-    function() { doAction(emp, 'clock_in'); }));
-  var sl = document.getElementById('switch-link');
-  sl.textContent = 'Not ' + currentEmp.name + '? Switch / Cambiar empleado';
-  sl.onclick = switchEmployee;
-  showScreen('s-action');
-}
-
 // === API Calls ===
 async function doAction(emp, actionType) {
   document.querySelectorAll('#a-btns button').forEach(function(b) { b.disabled = true; });
@@ -2001,17 +1981,11 @@ function showFlash(d) {
   document.getElementById('flash-msg').textContent  = m.msg;
   document.getElementById('flash-sub').textContent  = m.sub;
   document.getElementById('flash').className = 'active';
-  setTimeout(async function() {
+  // A fresh scan is required to see the next available action — don't show
+  // the next state's buttons on this same page load, no matter the action.
+  setTimeout(function() {
     document.getElementById('flash').className = '';
-    if (d.action === 'clock_out') { showDoneForToday(); return; }
-    if (currentEmp) {
-      try {
-        var emps = await fetchEmployees();
-        var emp = emps.find(function(e) { return e.id === currentEmp.id; });
-        if (emp) { showAction(emp); return; }
-      } catch(e) {}
-    }
-    loadAll();
+    showScreen('s-refresh');
   }, 2200);
 }
 
