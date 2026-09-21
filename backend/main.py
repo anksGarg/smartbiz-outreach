@@ -1786,12 +1786,13 @@ function switchEmployee() {
 }
 
 // === Session Timer ===
-// 15-minute window, started fresh on every non-reload page load. Uses
+// 5-minute window, started fresh on every non-reload page load. Uses
 // localStorage (not sessionStorage) since sessionStorage doesn't reliably
-// survive pull-to-refresh on some mobile browsers. Silent until expiry,
-// then disables all buttons.
+// survive pull-to-refresh on some mobile browsers. Actively re-checks on an
+// interval (not just on load) so buttons lock themselves even if the
+// employee leaves the tab open and idle past the window.
 function startSessionTimer() {
-  var TIMEOUT = 900;
+  var TIMEOUT = 300;
   var scanTime = Math.floor(Date.now() / 1000);
   localStorage.setItem('tc_scanTime', String(scanTime));
 
@@ -1806,7 +1807,7 @@ function startSessionTimer() {
     expired = true;
     localStorage.removeItem('tc_scanTime');
     if (bar) {
-      bar.textContent = 'Session expired. Scan the QR code again. / Sesion expirada. Escanee el codigo QR de nuevo.';
+      bar.textContent = 'Session expired. Scan the QR code again. / Sesión expirada. Escanee el código QR de nuevo.';
       bar.style.display = 'block';
     }
     disableAll();
@@ -1814,7 +1815,7 @@ function startSessionTimer() {
   }
   function tick() {
     var started = parseInt(localStorage.getItem('tc_scanTime'), 10);
-    if (!started || Math.floor(Date.now() / 1000) - started >= TIMEOUT) { expire(); return; }
+    if (!started || Math.floor(Date.now() / 1000) - started > TIMEOUT) { expire(); return; }
     setTimeout(tick, 30000);
   }
   tick();
