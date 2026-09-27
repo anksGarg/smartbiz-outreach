@@ -3,6 +3,23 @@ import { useRef, useState, useEffect } from 'react'
 const API = 'https://smartbiz-outreach.onrender.com'
 const PREVIEW_COLS = ['name', 'company', 'phone', 'email', 'address']
 const PREVIEW_LABELS = { name: 'Name', company: 'Company', phone: 'Phone', email: 'Email', address: 'Address' }
+const TIMEOUT_MSG = 'Something went wrong. Please try again.'
+
+// Wraps fetch with a timeout so a hung backend can't leave the UI stuck loading forever.
+async function fetchTimeout(url, opts = {}, ms = 15000) {
+  const ctrl = new AbortController()
+  const tid = setTimeout(() => ctrl.abort(), ms)
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal })
+  } finally {
+    clearTimeout(tid)
+  }
+}
+
+// Timeouts surface as AbortError — show a generic message rather than the raw DOMException text.
+function errMsg(e) {
+  return e.name === 'AbortError' ? TIMEOUT_MSG : e.message
+}
 
 function PropertyBadge({ value }) {
   if (!value) return <span className="text-gray-300">—</span>
@@ -60,10 +77,12 @@ export default function Contacts() {
 
   async function loadContacts() {
     try {
-      const res = await fetch(`${API}/contacts`)
-      if (res.ok) setContacts(await res.json())
+      const res = await fetchTimeout(`${API}/contacts`)
+      if (!res.ok) throw new Error()
+      setContacts(await res.json())
     } catch {
       setContacts([])
+      setStatus({ type: 'error', message: TIMEOUT_MSG })
     }
   }
 
@@ -134,7 +153,7 @@ export default function Contacts() {
     setDrafting(true)
     setDraftError(null)
     try {
-      const res = await fetch(`${API}/draft`, {
+      const res = await fetchTimeout(`${API}/draft`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -153,7 +172,7 @@ export default function Contacts() {
       const data = await res.json()
       setDraft(data.message)
     } catch (e) {
-      setDraftError(e.message)
+      setDraftError(errMsg(e))
     } finally {
       setDrafting(false)
     }
@@ -164,7 +183,7 @@ export default function Contacts() {
     setSending(true)
     setSendResult(null)
     try {
-      const res = await fetch(`${API}/send`, {
+      const res = await fetchTimeout(`${API}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -181,7 +200,7 @@ export default function Contacts() {
       const data = await res.json()
       setSendResult({ type: 'success', message: `Sent to ${data.sent_to}` })
     } catch (e) {
-      setSendResult({ type: 'error', message: e.message })
+      setSendResult({ type: 'error', message: errMsg(e) })
     } finally {
       setSending(false)
     }
@@ -199,14 +218,14 @@ export default function Contacts() {
     try {
       const form = new FormData()
       form.append('file', file)
-      const res = await fetch(`${API}/contacts/preview`, { method: 'POST', body: form })
+      const res = await fetchTimeout(`${API}/contacts/preview`, { method: 'POST', body: form }, 20000)
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || 'Could not read file.')
       }
       setPreview({ ...await res.json(), file })
     } catch (e) {
-      setStatus({ type: 'error', message: e.message })
+      setStatus({ type: 'error', message: errMsg(e) })
     } finally {
       setLoading(false)
     }
@@ -219,7 +238,7 @@ export default function Contacts() {
     try {
       const form = new FormData()
       form.append('file', preview.file)
-      const res = await fetch(`${API}/contacts/import`, { method: 'POST', body: form })
+      const res = await fetchTimeout(`${API}/contacts/import`, { method: 'POST', body: form }, 20000)
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || 'Import failed.')
@@ -234,7 +253,7 @@ export default function Contacts() {
       if (inputRef.current) inputRef.current.value = ''
       loadContacts()
     } catch (e) {
-      setStatus({ type: 'error', message: e.message })
+      setStatus({ type: 'error', message: errMsg(e) })
     } finally {
       setLoading(false)
     }

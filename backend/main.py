@@ -1442,22 +1442,6 @@ def _fmt_clock(time_str: str) -> str:
         return time_str
 
 
-def _calc_hours(e: dict) -> float | None:
-    """Calculate gross hours worked (clock_out - clock_in). clock_in='YYYY-MM-DD HH:MM', clock_out='HH:MM'."""
-    ci_str = (e.get("clock_in") or "").strip()
-    co_str = (e.get("clock_out") or "").strip()
-    if not (ci_str and co_str):
-        return None
-    try:
-        ci = datetime.strptime(ci_str, "%Y-%m-%d %H:%M")
-        co = datetime.strptime(f"{ci_str[:10]} {co_str}", "%Y-%m-%d %H:%M")
-        if co < ci:
-            co += timedelta(days=1)
-        return round((co - ci).total_seconds() / 3600, 2)
-    except Exception:
-        return None
-
-
 def _calc_lunch(e: dict) -> int | None:
     """Calculate lunch duration in minutes from lunch_out and lunch_in (both 'HH:MM')."""
     lo_str = (e.get("lunch_out") or "").strip()
@@ -1473,41 +1457,6 @@ def _calc_lunch(e: dict) -> int | None:
         return int((li - lo).total_seconds() / 60)
     except Exception:
         return None
-
-
-def _clock_html(name: str, action: str, time_str: str,
-                color: str = "#3b82f6", is_error: bool = False) -> str:
-    icon     = "❌" if is_error else "⏰"
-    err_attr = ' class="err"' if is_error else ""
-    t_html   = f"<p class='time'>{time_str}</p>" if time_str else ""
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Time Clock</title>
-<style>
-  *{{box-sizing:border-box;margin:0;padding:0}}
-  body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}}
-  .card{{background:#fff;border-radius:20px;padding:40px 32px;text-align:center;max-width:360px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}}
-  .co{{font-size:13px;color:#94a3b8;letter-spacing:.05em;text-transform:uppercase;margin-bottom:24px}}
-  .icon{{font-size:56px;margin-bottom:16px}}
-  .name{{font-size:26px;font-weight:700;color:#1e293b;margin-bottom:12px}}
-  .action{{font-size:20px;font-weight:600;color:{color};margin-bottom:8px}}
-  .time{{font-size:15px;color:#64748b}}
-  .err{{color:#ef4444}}
-</style>
-</head>
-<body>
-<div class="card">
-  <div class="co">Willamette Power Roofing</div>
-  <div class="icon">{icon}</div>
-  <div class="name"{err_attr}>{name}</div>
-  <div class="action">{action}</div>
-  {t_html}
-</div>
-</body>
-</html>"""
 
 
 class AddEmployeeRequest(BaseModel):
@@ -1578,43 +1527,6 @@ def create_employee(req: AddEmployeeRequest):
     emp = {"id": str(uuid.uuid4()), "name": req.name.strip(), "token": secrets.token_urlsafe(8)}
     _append_employee(emp)
     return {**emp, "status": "Out"}
-
-
-@app.get("/clock/{token}", response_class=HTMLResponse)
-def clock_event(token: str):
-    employees = _load_employees()
-    emp = next((e for e in employees if e["token"] == token), None)
-    if not emp:
-        return HTMLResponse(
-            _clock_html("Unknown", "Invalid QR code", "", is_error=True),
-            status_code=404,
-        )
-
-    timesheets    = _load_timesheets()
-    now_dt        = datetime.now(_TZ)
-    today         = now_dt.date().isoformat()
-    now_time      = now_dt.strftime("%H:%M")
-    now_disp      = _fmt_clock(now_time)
-    clock_in_full = f"{today} {now_time}"
-
-    open_entry = next(
-        (t for t in timesheets
-         if t.get("employee_id") == emp["id"] and _is_blank(t.get("clock_out"))),
-        None,
-    )
-
-    if open_entry:
-        ci_full = (open_entry.get("clock_in") or "").strip()
-        _update_clock_out(open_entry.get("id", ""), now_time, ci_full)
-        return HTMLResponse(_clock_html(emp["name"], "Clocked Out", now_disp, color="#ef4444"))
-
-    _append_timesheet({
-        "id":            str(uuid.uuid4()),
-        "employee_id":   emp["id"],
-        "employee_name": emp["name"],
-        "clock_in":      clock_in_full,
-    })
-    return HTMLResponse(_clock_html(emp["name"], "Clocked In", now_disp, color="#22c55e"))
 
 
 class TimeclockActionRequest(BaseModel):
@@ -2087,7 +1999,7 @@ def get_timesheet():
     entries = _load_timesheets()
     result  = []
     for e in sorted(entries, key=lambda x: (_row_date(x), x.get("employee_name", ""))):
-        result.append({**e, "date": _row_date(e), "hours": _calc_hours(e), "lunch_minutes": _calc_lunch(e)})
+        result.append({**e, "date": _row_date(e), "lunch_minutes": _calc_lunch(e)})
     return {"entries": result}
 
 

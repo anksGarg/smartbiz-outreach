@@ -1,6 +1,23 @@
 import { useState, useEffect } from 'react'
 
 const API = 'https://smartbiz-outreach.onrender.com'
+const TIMEOUT_MSG = 'Something went wrong. Please try again.'
+
+// Wraps fetch with a timeout so a hung backend can't leave the UI stuck loading forever.
+async function fetchTimeout(url, opts = {}, ms = 15000) {
+  const ctrl = new AbortController()
+  const tid = setTimeout(() => ctrl.abort(), ms)
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal })
+  } finally {
+    clearTimeout(tid)
+  }
+}
+
+// Timeouts surface as AbortError — show a generic message rather than the raw DOMException text.
+function errMsg(e) {
+  return e.name === 'AbortError' ? TIMEOUT_MSG : e.message
+}
 
 function fmtTime(isoStr) {
   if (!isoStr) return '—'
@@ -45,6 +62,7 @@ export default function Timesheet() {
   const [loadingQR,  setLoadingQR]  = useState(true)
   const [employees,  setEmployees]  = useState([])
   const [loadingEmp, setLoadingEmp] = useState(true)
+  const [empError,   setEmpError]   = useState(null)
   const [newName,    setNewName]    = useState('')
   const [adding,     setAdding]     = useState(false)
   const [addError,   setAddError]   = useState(null)
@@ -52,6 +70,7 @@ export default function Timesheet() {
   // Time log tab
   const [entries,    setEntries]    = useState([])
   const [loadingTs,  setLoadingTs]  = useState(true)
+  const [tsError,    setTsError]    = useState(null)
   const [filterFrom, setFilterFrom] = useState(todayStr())
   const [filterTo,   setFilterTo]   = useState(todayStr())
   const [filterEmp,  setFilterEmp]  = useState('')
@@ -62,30 +81,43 @@ export default function Timesheet() {
   async function fetchCompanyQR() {
     setLoadingQR(true)
     try {
-      const res  = await fetch(`${API}/timeclock/qr`)
+      const res  = await fetchTimeout(`${API}/timeclock/qr`)
+      if (!res.ok) throw new Error()
       const data = await res.json()
       setCompanyQR(data)
-    } catch {}
+    } catch {
+      setCompanyQR(null)
+    }
     setLoadingQR(false)
   }
 
   async function fetchEmployees() {
     setLoadingEmp(true)
+    setEmpError(null)
     try {
-      const res  = await fetch(`${API}/employees`)
+      const res  = await fetchTimeout(`${API}/employees`)
+      if (!res.ok) throw new Error()
       const data = await res.json()
       setEmployees(data.employees || [])
-    } catch {}
+    } catch {
+      setEmployees([])
+      setEmpError(TIMEOUT_MSG)
+    }
     setLoadingEmp(false)
   }
 
   async function fetchTimesheet() {
     setLoadingTs(true)
+    setTsError(null)
     try {
-      const res  = await fetch(`${API}/timesheet`)
+      const res  = await fetchTimeout(`${API}/timesheet`)
+      if (!res.ok) throw new Error()
       const data = await res.json()
       setEntries(data.entries || [])
-    } catch {}
+    } catch {
+      setEntries([])
+      setTsError(TIMEOUT_MSG)
+    }
     setLoadingTs(false)
   }
 
@@ -94,7 +126,7 @@ export default function Timesheet() {
     setAdding(true)
     setAddError(null)
     try {
-      const res = await fetch(`${API}/employees`, {
+      const res = await fetchTimeout(`${API}/employees`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ name: newName.trim() }),
@@ -107,7 +139,7 @@ export default function Timesheet() {
       setEmployees(prev => [...prev, emp])
       setNewName('')
     } catch (e) {
-      setAddError(e.message)
+      setAddError(errMsg(e))
     } finally {
       setAdding(false)
     }
@@ -252,6 +284,8 @@ export default function Timesheet() {
             </div>
             {loadingEmp ? (
               <p className="text-sm text-gray-400 px-6 py-4">Loading…</p>
+            ) : empError ? (
+              <p className="text-sm text-red-600 px-6 py-4">{empError}</p>
             ) : employees.length === 0 ? (
               <p className="text-sm text-gray-400 px-6 py-4">No employees yet. Add one above.</p>
             ) : (
@@ -282,7 +316,7 @@ export default function Timesheet() {
         const clockedInNow = employees.filter(e => e.status === 'clocked_in' || e.status === 'returned_from_lunch').length
         const hoursToday   = entries
           .filter(e => e.date === today)
-          .reduce((sum, e) => sum + (e.work_hours ?? e.hours ?? 0), 0)
+          .reduce((sum, e) => sum + (e.work_hours ?? 0), 0)
         const hoursTodayFmt = (() => {
           const h = Math.floor(hoursToday)
           const m = Math.round((hoursToday - h) * 60)
@@ -364,6 +398,8 @@ export default function Timesheet() {
             {/* Table */}
             {loadingTs ? (
               <p className="text-sm text-gray-400">Loading time log…</p>
+            ) : tsError ? (
+              <p className="text-sm text-red-600 py-6 text-center">{tsError}</p>
             ) : filtered.length === 0 ? (
               <p className="text-sm text-gray-400 py-6 text-center">
                 {entries.length === 0 ? 'No time entries yet.' : 'No entries match the current filters.'}
@@ -405,7 +441,7 @@ export default function Timesheet() {
                               </span>
                             ) : (
                               <span className="text-gray-600">
-                                {fmtHours(entry.work_hours ?? entry.hours, false)}
+                                {fmtHours(entry.work_hours, false)}
                               </span>
                             )}
                           </td>

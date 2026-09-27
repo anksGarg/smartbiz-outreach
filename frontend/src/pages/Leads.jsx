@@ -1,6 +1,23 @@
 import { useState, useEffect, useRef } from 'react'
 
 const API = 'https://smartbiz-outreach.onrender.com'
+const TIMEOUT_MSG = 'Something went wrong. Please try again.'
+
+// Wraps fetch with a timeout so a hung backend can't leave the UI stuck loading forever.
+async function fetchTimeout(url, opts = {}, ms = 15000) {
+  const ctrl = new AbortController()
+  const tid = setTimeout(() => ctrl.abort(), ms)
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal })
+  } finally {
+    clearTimeout(tid)
+  }
+}
+
+// Timeouts surface as AbortError — show a generic message rather than the raw DOMException text.
+function errMsg(e) {
+  return e.name === 'AbortError' ? TIMEOUT_MSG : e.message
+}
 
 function load(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback } catch { return fallback }
@@ -80,14 +97,14 @@ export default function Leads() {
     setScoreResult(null)
     setScoreError(null)
     try {
-      const res = await fetch(`${API}/roof-score?address=${encodeURIComponent(address)}`)
+      const res = await fetchTimeout(`${API}/roof-score?address=${encodeURIComponent(address)}`)
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || 'Could not score this address.')
       }
       setScoreResult(await res.json())
     } catch (e) {
-      setScoreError(e.message)
+      setScoreError(errMsg(e))
     } finally {
       setScoring(false)
     }
@@ -101,11 +118,12 @@ export default function Leads() {
     setBulkError(null)
     setBulkAdded(new Set())
     try {
-      const res = await fetch(`${API}/score-addresses`, {
+      // Scores a whole list of addresses, so give it more than the default window.
+      const res = await fetchTimeout(`${API}/score-addresses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ addresses: lines }),
-      })
+      }, 60000)
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || 'Could not score addresses.')
@@ -113,7 +131,7 @@ export default function Leads() {
       const data = await res.json()
       setBulkResults(data.results)
     } catch (e) {
-      setBulkError(e.message)
+      setBulkError(errMsg(e))
     } finally {
       setBulkScoring(false)
     }
@@ -123,14 +141,15 @@ export default function Leads() {
     const priorityMap = { High: 'Tier 1', Medium: 'Tier 2', Low: 'Tier 3' }
     setBulkEnriching(prev => new Set([...prev, idx]))
     try {
-      const enrichRes = await fetch(`${API}/enrich`, {
+      // Hits external Apollo/Google Places APIs — allow more than the default window.
+      const enrichRes = await fetchTimeout(`${API}/enrich`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: result.address, property_type: '' }),
-      })
+      }, 30000)
       const enriched = enrichRes.ok ? await enrichRes.json() : {}
 
-      const res = await fetch(`${API}/contacts/add`, {
+      const res = await fetchTimeout(`${API}/contacts/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -151,7 +170,7 @@ export default function Leads() {
       if (enriched.phone_found)    setBulkPhoneFound(prev => new Set([...prev, idx]))
       setBulkAdded(prev => new Set([...prev, idx]))
     } catch (e) {
-      alert(e.message)
+      alert(errMsg(e))
     } finally {
       setBulkEnriching(prev => { const s = new Set(prev); s.delete(idx); return s })
     }
@@ -166,20 +185,20 @@ export default function Leads() {
     setEnrichingIdx(new Set())
     setPage(1)
     try {
-      const res = await fetch(`${API}/generate-leads`, {
+      // Documented as taking up to ~60s (RLIS + commercial enrichment), so give it real headroom.
+      const res = await fetchTimeout(`${API}/generate-leads`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ zip, county, property_type: propFilter }),
-      })
+      }, 90000)
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || 'Could not generate leads.')
       }
       const data = await res.json()
-      if (data.leads?.length) console.log('[generate-leads] first lead:', JSON.stringify(data.leads[0]))
       setLeads(data.leads)
     } catch (e) {
-      setGenError(e.message)
+      setGenError(errMsg(e))
     } finally {
       setGenerating(false)
     }
@@ -188,11 +207,12 @@ export default function Leads() {
   // Fetch enrichment for a single lead and merge results into leads state.
   // Returns the raw enrichment response so callers can use it immediately.
   async function enrichLead(lead) {
-    const res = await fetch(`${API}/enrich`, {
+    // Hits external Apollo/Google Places APIs — allow more than the default window.
+    const res = await fetchTimeout(`${API}/enrich`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ address: lead.address, property_type: lead.property_type }),
-    })
+    }, 30000)
     const data = res.ok ? await res.json() : {}
     setLeads(prev => prev
       ? prev.map(l => l.address === lead.address
@@ -249,7 +269,7 @@ export default function Leads() {
     }
 
     try {
-      const res = await fetch(`${API}/contacts/add`, {
+      const res = await fetchTimeout(`${API}/contacts/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -266,7 +286,7 @@ export default function Leads() {
       }
       setAddedRows(prev => new Set([...prev, lead.address]))
     } catch (e) {
-      alert(e.message)
+      alert(errMsg(e))
     }
   }
 
