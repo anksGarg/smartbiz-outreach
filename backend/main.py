@@ -1717,7 +1717,7 @@ header p  { font-size: .8rem; opacity: .7; margin-top: 2px }
 </div>
 
 <div id="s-refresh" class="screen">
-  <div class="refresh-card">Please scan the QR code again.<br>Por favor escanee el c&#243;digo QR de nuevo.</div>
+  <div class="refresh-card">All done for now.<br>Todo listo por ahora.</div>
 </div>
 
 <script>
