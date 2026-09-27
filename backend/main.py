@@ -1629,12 +1629,18 @@ header p  { font-size: .8rem; opacity: .7; margin-top: 2px }
 </div>
 
 <div id="s-refresh" class="screen">
-  <div class="refresh-card">All done for now.<br>Todo listo por ahora.</div>
+  <div class="refresh-card" id="refresh-msg">All done for now.<br>Todo listo por ahora.</div>
 </div>
 
 <script>
 // === State ===
 var currentEmp = null;
+
+// Messages for the dead-end "scan again" screen. Clock-out gets its own
+// sign-off; every other case (clock in / lunch out / lunch in / reload) uses
+// the generic one already baked into the page's default HTML.
+var GENERIC_DONE_MSG  = 'All done for now.<br>Todo listo por ahora.';
+var CLOCKOUT_DONE_MSG = "You're clocked out for the day, see you tomorrow!<br>Ya registraste tu salida por hoy, ¡hasta mañana!";
 
 // === Refresh Detection ===
 // Navigation Timing API tells us whether this load was a reload (including
@@ -1898,6 +1904,8 @@ function showFlash(d) {
   // the next state's buttons on this same page load, no matter the action.
   setTimeout(function() {
     document.getElementById('flash').className = '';
+    document.getElementById('refresh-msg').innerHTML =
+      d.action === 'clock_out' ? CLOCKOUT_DONE_MSG : GENERIC_DONE_MSG;
     showScreen('s-refresh');
   }, 2200);
 }
