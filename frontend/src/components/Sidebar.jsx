@@ -6,6 +6,7 @@ const links = [
   { to: '/contacts', label: 'Contacts' },
   { to: '/campaigns', label: 'Campaigns' },
   { to: '/customers', label: 'Customers' },
+  { to: '/customers/followup-drafts', label: 'Follow-up Drafts (dev)' },
   { to: '/timesheet', label: 'Timesheet' },
 ]
 

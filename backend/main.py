@@ -28,6 +28,13 @@ from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from pyproj import Transformer
 from pydantic import BaseModel
 
+from followup_templates import (
+    CATEGORIES as _FOLLOWUP_CATEGORIES,
+    SYSTEM_PROMPTS as _FOLLOWUP_SYSTEM_PROMPTS,
+    UNSUBSCRIBE_LINE as _FOLLOWUP_UNSUBSCRIBE_LINE,
+    MAILING_ADDRESS_PLACEHOLDER as _FOLLOWUP_ADDRESS_PLACEHOLDER,
+)
+
 load_dotenv()
 
 app = FastAPI(title="SmallBizOutreach API")
@@ -327,6 +334,115 @@ def send_email(req: SendRequest):
     _save_campaigns(campaigns)
 
     return {"status": "sent", "sent_to": TEST_RECIPIENT}
+
+
+# ── Customers Follow-Up (draft only — no sending) ────────────────────────────
+
+class FollowupDraftRequest(BaseModel):
+    name: str = ""
+    last_service: str = ""       # one of _FOLLOWUP_CATEGORIES
+    last_service_date: str = ""  # any date-ish string; only the year is used
+    address: str = ""
+
+
+def _service_year(date_str: str) -> str:
+    """Pull just the year out of a last-service date string, in whatever format it arrives."""
+    m = re.search(r"(19|20)\d{2}", date_str or "")
+    return m.group(0) if m else ""
+
+
+@app.post("/followup/draft")
+def followup_draft(req: FollowupDraftRequest):
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured.")
+
+    category = req.last_service.strip()
+    if category not in _FOLLOWUP_CATEGORIES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"last_service must be one of: {', '.join(_FOLLOWUP_CATEGORIES)}",
+        )
+
+    first = _first_name(req.name) if req.name.strip() else "there"
+    year = _service_year(req.last_service_date)
+
+    details = [f"Customer first name: {first}", f"Past service: {category}"]
+    if year:
+        details.append(f"Year of past service: {year}")
+    if req.address.strip():
+        details.append(f"Property address: {req.address.strip()}")
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model="claude-opus-4-8",
+            max_tokens=400,
+            system=_FOLLOWUP_SYSTEM_PROMPTS[category],
+            messages=[{"role": "user", "content": "\n".join(details)}],
+        )
+        raw = response.content[0].text.strip()
+    except anthropic.APIError as e:
+        raise HTTPException(status_code=502, detail=f"Claude API error: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not draft follow-up: {e}")
+
+    # Strip ```json / ``` code fences in case the model wraps its JSON reply in one.
+    cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
+
+    try:
+        data = json.loads(cleaned)
+        subject = (data.get("subject") or "").strip()
+        body    = (data.get("body") or "").strip()
+    except Exception:
+        raise HTTPException(status_code=502, detail="Claude did not return a valid draft.")
+
+    if not subject or not body:
+        raise HTTPException(status_code=502, detail="Claude returned an incomplete draft.")
+
+    body = f"{body}\n\n{_FOLLOWUP_UNSUBSCRIBE_LINE}\n{_FOLLOWUP_ADDRESS_PLACEHOLDER}"
+    return {"subject": subject, "body": body}
+
+
+_FOLLOWUP_COLUMN_ALIASES = {
+    "name":              ["name"],
+    "email":             ["email", "email address"],
+    "address":           ["address"],
+    "property_type":     ["property type"],
+    "last_service":      ["last service (of 3)", "last service"],
+    "last_service_date": ["last service date"],
+}
+
+
+@app.post("/followup/preview")
+def followup_preview(file: UploadFile):
+    """Parse an uploaded customer list for the Follow-up Drafts page.
+
+    Read-only: never written to disk, contacts.json, or the Google Sheet —
+    the parsed rows only ever live in the response and the browser's memory.
+    """
+    df = _parse_file(file)
+
+    rename_map = {}
+    lowered = {col.strip().lower(): col for col in df.columns}
+    for field, aliases in _FOLLOWUP_COLUMN_ALIASES.items():
+        for alias in aliases:
+            if alias in lowered:
+                rename_map[lowered[alias]] = field
+                break
+    df = df.rename(columns=rename_map)
+
+    schema_fields = list(_FOLLOWUP_COLUMN_ALIASES.keys())
+    for field in schema_fields:
+        if field not in df.columns:
+            df[field] = ""
+
+    df = df[schema_fields].copy()
+    df = df.where(pd.notna(df), "")
+    df = df.astype(str)
+
+    rows = df.head(500).to_dict(orient="records")
+    return {"rows": rows, "total": len(df)}
 
 
 # ── Lead Generation — Oregon Metro RLIS ──────────────────────────────────────
