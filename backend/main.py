@@ -413,15 +413,105 @@ _FOLLOWUP_COLUMN_ALIASES = {
     "last_service_date": ["last service date"],
 }
 
+_FOLLOWUP_EMAIL_RE = re.compile(r"^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$")
+
+
+def _years_ago(n: int) -> date:
+    today = date.today()
+    try:
+        return today.replace(year=today.year - n)
+    except ValueError:
+        # today is Feb 29 and the target year has no Feb 29
+        return today.replace(month=2, day=28, year=today.year - n)
+
+
+def _is_master_list(df: pd.DataFrame) -> bool:
+    """Master Contact List format: has a comma-separated date column per
+    tracked service, instead of a single last_service/last_service_date pair."""
+    lowered = {col.strip().lower() for col in df.columns}
+    return all(cat.lower() in lowered for cat in _FOLLOWUP_CATEGORIES)
+
+
+def _parse_master_list(df: pd.DataFrame) -> dict:
+    """Wide Master Contact List format: each of the three tracked services has
+    its own column of comma-separated MM/DD/YYYY dates (oldest to newest), or
+    blank. Keeps only rows with a single valid email and at least one date, in
+    any of the three tracked services, within the last 5 years."""
+    lowered = {col.strip().lower(): col for col in df.columns}
+
+    def col(name):
+        return lowered.get(name.lower())
+
+    name_col     = col("name")
+    email_col    = col("email")
+    address_col  = col("address")
+    prop_col     = col("property type (rlis)")
+    service_cols = {cat: col(cat) for cat in _FOLLOWUP_CATEGORIES}
+
+    cutoff = _years_ago(5)
+    total_rows_in_file = len(df)
+    kept_rows = []
+    eligible_emails = set()
+
+    for _, row in df.iterrows():
+        email = "" if email_col is None or pd.isna(row[email_col]) else str(row[email_col]).strip()
+        if not _FOLLOWUP_EMAIL_RE.match(email):
+            continue
+
+        best_service, best_date = None, None
+        for cat, c in service_cols.items():
+            if c is None or pd.isna(row[c]) or not str(row[c]).strip():
+                continue
+            for part in str(row[c]).split(","):
+                part = part.strip()
+                if not part:
+                    continue
+                try:
+                    d = datetime.strptime(part, "%m/%d/%Y").date()
+                except ValueError:
+                    continue
+                if d < cutoff:
+                    continue
+                if best_date is None or d > best_date:
+                    best_service, best_date = cat, d
+
+        if best_date is None:
+            continue
+
+        kept_rows.append({
+            "name":              "" if name_col is None or pd.isna(row[name_col]) else str(row[name_col]).strip(),
+            "email":             email,
+            "address":           "" if address_col is None or pd.isna(row[address_col]) else str(row[address_col]).strip(),
+            "property_type":     "" if prop_col is None or pd.isna(row[prop_col]) else str(row[prop_col]).strip(),
+            "last_service":      best_service,
+            "last_service_date": best_date.isoformat(),
+        })
+        eligible_emails.add(email.lower())
+
+    return {
+        "rows":                   kept_rows[:500],
+        "total":                  total_rows_in_file,
+        "total_rows_in_file":     total_rows_in_file,
+        "eligible_rows":          len(kept_rows),
+        "unique_eligible_emails": len(eligible_emails),
+    }
+
 
 @app.post("/followup/preview")
 def followup_preview(file: UploadFile):
     """Parse an uploaded customer list for the Follow-up Drafts page.
 
+    Accepts either the flat 6-column format or the wide Master Contact List
+    format (detected via _is_master_list) — reads only the first sheet in an
+    .xlsx, so a "Notes" sheet elsewhere in the workbook is never touched.
+
     Read-only: never written to disk, contacts.json, or the Google Sheet —
     the parsed rows only ever live in the response and the browser's memory.
     """
     df = _parse_file(file)
+
+    if _is_master_list(df):
+        return _parse_master_list(df)
 
     rename_map = {}
     lowered = {col.strip().lower(): col for col in df.columns}
