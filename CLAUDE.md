@@ -24,3 +24,12 @@ Built for 2 co-owners of a roofing company in Portland, OR as a design partner M
 
 ## Build order
 Currently on Session 1 — project setup
+
+## Git workflow" 
+- Never commit or push directly to main. main is production and only changes via a reviewed Pull Request from dev.
+- Before any commit or push, run `git branch --show-current` and tell me the branch.
+- Default working branch is dev. For larger or risky work, create feature/<module>-<description> off dev.
+- Use `git add <specific files>`, never `git add .` or `git add -A`.
+- Never commit data files (CSV, XLSX, ZIP, timesheets, flyers, images) or secrets.
+- If a change needs a new environment variable or a Google Sheet column, list it explicitly in your summary so I can apply it to production before merging.
+Commit this to dev only.
