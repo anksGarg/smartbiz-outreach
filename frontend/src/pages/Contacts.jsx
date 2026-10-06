@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
+import { API_URL as API } from '../config'
 
-const API = 'https://smartbiz-outreach.onrender.com'
 const PREVIEW_COLS = ['name', 'company', 'phone', 'email', 'address']
 const PREVIEW_LABELS = { name: 'Name', company: 'Company', phone: 'Phone', email: 'Email', address: 'Address' }
 const TIMEOUT_MSG = 'Something went wrong. Please try again.'

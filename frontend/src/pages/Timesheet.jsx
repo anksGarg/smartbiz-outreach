@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
+import { API_URL as API } from '../config'
 
-const API = 'https://smartbiz-outreach.onrender.com'
 const TIMEOUT_MSG = 'Something went wrong. Please try again.'
 
 // Wraps fetch with a timeout so a hung backend can't leave the UI stuck loading forever.

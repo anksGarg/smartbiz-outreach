@@ -32,11 +32,14 @@ load_dotenv()
 
 app = FastAPI(title="SmallBizOutreach API")
 
+_EXTRA_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "https://smartbiz-outreach-1.onrender.com",
+        *_EXTRA_ORIGINS,
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -1222,7 +1225,7 @@ def add_contact(contact: ContactIn):
 
 # ── Time Tracking ──────────────────────────────────────────────────────────────
 
-_SHEET_ID   = "1MzNRiBW2-RIaCJ-BIqb7f_Faj3Ej2P1S4e4XgOmoqVY"
+_SHEET_ID   = os.getenv("GOOGLE_SHEET_ID", "1MzNRiBW2-RIaCJ-BIqb7f_Faj3Ej2P1S4e4XgOmoqVY")
 _CREDS_FILE = Path(__file__).parent / "google-credentials.json"
 _SCOPES     = ["https://www.googleapis.com/auth/spreadsheets"]
 
