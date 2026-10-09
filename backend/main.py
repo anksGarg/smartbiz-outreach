@@ -1510,12 +1510,14 @@ def list_employees():
             (t for t in reversed(today_rows) if _is_blank(t.get("clock_out"))),
             None,
         )
+        done_for_today = bool(today_rows) and all(not _is_blank(t.get("clock_out")) for t in today_rows)
         result.append({
             **emp,
             "status":            status,
             "clock_in_time":     open_row.get("clock_in")   if open_row else None,
             "lunch_out_time":    open_row.get("lunch_out")  if open_row else None,
             "already_had_lunch": _lunch_taken_today(emp["id"], timesheets, today),
+            "done_for_today":    done_for_today,
         })
     return {"employees": result}
 
@@ -1840,7 +1842,10 @@ function showAction(emp) {
   btns.innerHTML = '';
   var st = emp.status;
 
-  if (st === 'not_clocked_in') {
+  if (emp.done_for_today) {
+    statusEl.textContent = "You're clocked out for the day, see you tomorrow! / Terminó por hoy, ¡hasta mañana!";
+
+  } else if (st === 'not_clocked_in') {
     statusEl.textContent = 'Not clocked in yet / No registrado aun';
     btns.appendChild(makeBtn('🏠 Start the Work Day', 'Registrar Entrada', 'btn-in',
       function() { doAction(emp, 'clock_in'); }));
@@ -1966,8 +1971,12 @@ def timeclock_action(req: TimeclockActionRequest):
     print(f"[timeclock] emp={emp['name']!r} action={req.action!r} now={now_time!r} open_row={open_row}", flush=True)
 
     if req.action == "clock_in":
-        if open_row:
-            raise HTTPException(status_code=400, detail="Already clocked in — clock out first.")
+        if today_rows:
+            raise HTTPException(
+                status_code=400,
+                detail="You have already clocked in today. Please see the owner if this is a mistake."
+                       " / Ya registró su entrada hoy. Hable con el dueño si es un error.",
+            )
         new_row = {
             "id": str(uuid.uuid4()), "employee_id": emp["id"],
             "employee_name": emp["name"], "clock_in": f"{today} {now_time}",
