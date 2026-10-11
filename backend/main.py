@@ -1578,6 +1578,7 @@ header p  { font-size: .8rem; opacity: .7; margin-top: 2px }
 .a-name     { font-size: 2rem; font-weight: 800; color: #1e293b; margin-bottom: 6px; line-height: 1.1 }
 .a-status   { font-size: 1.05rem; color: #64748b; margin-bottom: 28px; min-height: 1.5em; line-height: 1.4 }
 #a-btns { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 400px }
+.lunch-note { background: #fffbeb; border: 1.5px solid #fde68a; color: #92400e; font-weight: 700; font-size: .95rem; line-height: 1.4; border-radius: 12px; padding: 14px 16px; text-align: center }
 .action-btn { width: 100%; min-height: 68px; padding: 16px 20px; border-radius: 16px; border: none; font-size: 1.15rem; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; line-height: 1.35; text-align: center }
 .action-btn:disabled { opacity: .45; cursor: not-allowed }
 .btn-in    { background: #16a34a; color: #fff }
@@ -1646,6 +1647,9 @@ var currentEmp = null;
 // the generic one already baked into the page's default HTML.
 var GENERIC_DONE_MSG  = 'All done for now.<br>Todo listo por ahora.';
 var CLOCKOUT_DONE_MSG = "You're clocked out for the day, see you tomorrow!<br>Ya registraste tu salida por hoy, ¡hasta mañana!";
+// Shown only on the on_lunch screen, above the buttons — a reminder, not an
+// enforced rule. Not shown on the flash confirmation or the scan-again screen.
+var LUNCH_NOTE = 'NOTE: you are required to take a minimum 30 minute lunch break<br>NOTA: se requiere un descanso de almuerzo mínimo de 30 minutos.';
 
 // === Refresh Detection ===
 // Navigation Timing API tells us whether this load was a reload (including
@@ -1861,6 +1865,10 @@ function showAction(emp) {
 
   } else if (st === 'on_lunch') {
     statusEl.textContent = 'On lunch since / En almuerzo desde ' + fmtHHMM(emp.lunch_out_time);
+    var lunchNote = document.createElement('div');
+    lunchNote.className = 'lunch-note';
+    lunchNote.innerHTML = LUNCH_NOTE;
+    btns.appendChild(lunchNote);
     btns.appendChild(makeBtn('🥪 Back from Lunch', 'Regreso de Almuerzo', 'btn-in',
       function() { doAction(emp, 'lunch_in'); }));
     btns.appendChild(makeBtn('🏁 Done for the Day', 'Fin del dia', 'btn-out',
