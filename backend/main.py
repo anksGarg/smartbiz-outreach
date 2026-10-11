@@ -32,11 +32,14 @@ load_dotenv()
 
 app = FastAPI(title="SmallBizOutreach API")
 
+_EXTRA_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "https://smartbiz-outreach-1.onrender.com",
+        *_EXTRA_ORIGINS,
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -1222,7 +1225,7 @@ def add_contact(contact: ContactIn):
 
 # ── Time Tracking ──────────────────────────────────────────────────────────────
 
-_SHEET_ID   = "1MzNRiBW2-RIaCJ-BIqb7f_Faj3Ej2P1S4e4XgOmoqVY"
+_SHEET_ID   = os.getenv("GOOGLE_SHEET_ID", "1MzNRiBW2-RIaCJ-BIqb7f_Faj3Ej2P1S4e4XgOmoqVY")
 _CREDS_FILE = Path(__file__).parent / "google-credentials.json"
 _SCOPES     = ["https://www.googleapis.com/auth/spreadsheets"]
 
@@ -1507,12 +1510,14 @@ def list_employees():
             (t for t in reversed(today_rows) if _is_blank(t.get("clock_out"))),
             None,
         )
+        done_for_today = bool(today_rows) and all(not _is_blank(t.get("clock_out")) for t in today_rows)
         result.append({
             **emp,
             "status":            status,
             "clock_in_time":     open_row.get("clock_in")   if open_row else None,
             "lunch_out_time":    open_row.get("lunch_out")  if open_row else None,
             "already_had_lunch": _lunch_taken_today(emp["id"], timesheets, today),
+            "done_for_today":    done_for_today,
         })
     return {"employees": result}
 
@@ -1573,6 +1578,7 @@ header p  { font-size: .8rem; opacity: .7; margin-top: 2px }
 .a-name     { font-size: 2rem; font-weight: 800; color: #1e293b; margin-bottom: 6px; line-height: 1.1 }
 .a-status   { font-size: 1.05rem; color: #64748b; margin-bottom: 28px; min-height: 1.5em; line-height: 1.4 }
 #a-btns { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 400px }
+.lunch-note { background: #fffbeb; border: 1.5px solid #fde68a; color: #92400e; font-weight: 700; font-size: .95rem; line-height: 1.4; border-radius: 12px; padding: 14px 16px; text-align: center }
 .action-btn { width: 100%; min-height: 68px; padding: 16px 20px; border-radius: 16px; border: none; font-size: 1.15rem; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; line-height: 1.35; text-align: center }
 .action-btn:disabled { opacity: .45; cursor: not-allowed }
 .btn-in    { background: #16a34a; color: #fff }
@@ -1641,6 +1647,9 @@ var currentEmp = null;
 // the generic one already baked into the page's default HTML.
 var GENERIC_DONE_MSG  = 'All done for now.<br>Todo listo por ahora.';
 var CLOCKOUT_DONE_MSG = "You're clocked out for the day, see you tomorrow!<br>Ya registraste tu salida por hoy, ¡hasta mañana!";
+// Shown only on the on_lunch screen, above the buttons — a reminder, not an
+// enforced rule. Not shown on the flash confirmation or the scan-again screen.
+var LUNCH_NOTE = 'NOTE: you are required to take a minimum 30 minute lunch break<br>NOTA: se requiere un descanso de almuerzo mínimo de 30 minutos.';
 
 // === Refresh Detection ===
 // Navigation Timing API tells us whether this load was a reload (including
@@ -1837,7 +1846,10 @@ function showAction(emp) {
   btns.innerHTML = '';
   var st = emp.status;
 
-  if (st === 'not_clocked_in') {
+  if (emp.done_for_today) {
+    statusEl.textContent = "You're clocked out for the day, see you tomorrow! / Terminó por hoy, ¡hasta mañana!";
+
+  } else if (st === 'not_clocked_in') {
     statusEl.textContent = 'Not clocked in yet / No registrado aun';
     btns.appendChild(makeBtn('🏠 Start the Work Day', 'Registrar Entrada', 'btn-in',
       function() { doAction(emp, 'clock_in'); }));
@@ -1853,6 +1865,10 @@ function showAction(emp) {
 
   } else if (st === 'on_lunch') {
     statusEl.textContent = 'On lunch since / En almuerzo desde ' + fmtHHMM(emp.lunch_out_time);
+    var lunchNote = document.createElement('div');
+    lunchNote.className = 'lunch-note';
+    lunchNote.innerHTML = LUNCH_NOTE;
+    btns.appendChild(lunchNote);
     btns.appendChild(makeBtn('🥪 Back from Lunch', 'Regreso de Almuerzo', 'btn-in',
       function() { doAction(emp, 'lunch_in'); }));
     btns.appendChild(makeBtn('🏁 Done for the Day', 'Fin del dia', 'btn-out',
@@ -1963,8 +1979,12 @@ def timeclock_action(req: TimeclockActionRequest):
     print(f"[timeclock] emp={emp['name']!r} action={req.action!r} now={now_time!r} open_row={open_row}", flush=True)
 
     if req.action == "clock_in":
-        if open_row:
-            raise HTTPException(status_code=400, detail="Already clocked in — clock out first.")
+        if today_rows:
+            raise HTTPException(
+                status_code=400,
+                detail="You have already clocked in today. Please see the owner if this is a mistake."
+                       " / Ya registró su entrada hoy. Hable con el dueño si es un error.",
+            )
         new_row = {
             "id": str(uuid.uuid4()), "employee_id": emp["id"],
             "employee_name": emp["name"], "clock_in": f"{today} {now_time}",
