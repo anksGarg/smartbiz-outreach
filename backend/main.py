@@ -30,9 +30,7 @@ from pydantic import BaseModel
 
 from followup_templates import (
     CATEGORIES as _FOLLOWUP_CATEGORIES,
-    SYSTEM_PROMPTS as _FOLLOWUP_SYSTEM_PROMPTS,
-    UNSUBSCRIBE_LINE as _FOLLOWUP_UNSUBSCRIBE_LINE,
-    MAILING_ADDRESS_PLACEHOLDER as _FOLLOWUP_ADDRESS_PLACEHOLDER,
+    render_followup_email as _render_followup_email,
 )
 
 load_dotenv()
@@ -340,23 +338,15 @@ def send_email(req: SendRequest):
 
 class FollowupDraftRequest(BaseModel):
     name: str = ""
-    last_service: str = ""       # one of _FOLLOWUP_CATEGORIES
-    last_service_date: str = ""  # any date-ish string; only the year is used
-    address: str = ""
-
-
-def _service_year(date_str: str) -> str:
-    """Pull just the year out of a last-service date string, in whatever format it arrives."""
-    m = re.search(r"(19|20)\d{2}", date_str or "")
-    return m.group(0) if m else ""
+    last_service: str = ""         # one of _FOLLOWUP_CATEGORIES
+    last_service_date: str = ""    # any date-ish string; only the year is used
+    has_reroofing: bool = False
+    reroofing_last_date: str = ""  # any date-ish string; only the year is used
+    business_signal: bool = False
 
 
 @app.post("/followup/draft")
 def followup_draft(req: FollowupDraftRequest):
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured.")
-
     category = req.last_service.strip()
     if category not in _FOLLOWUP_CATEGORIES:
         raise HTTPException(
@@ -364,44 +354,14 @@ def followup_draft(req: FollowupDraftRequest):
             detail=f"last_service must be one of: {', '.join(_FOLLOWUP_CATEGORIES)}",
         )
 
-    first = _first_name(req.name) if req.name.strip() else "there"
-    year = _service_year(req.last_service_date)
-
-    details = [f"Customer first name: {first}", f"Past service: {category}"]
-    if year:
-        details.append(f"Year of past service: {year}")
-    if req.address.strip():
-        details.append(f"Property address: {req.address.strip()}")
-
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
-            model="claude-opus-4-8",
-            max_tokens=400,
-            system=_FOLLOWUP_SYSTEM_PROMPTS[category],
-            messages=[{"role": "user", "content": "\n".join(details)}],
-        )
-        raw = response.content[0].text.strip()
-    except anthropic.APIError as e:
-        raise HTTPException(status_code=502, detail=f"Claude API error: {e}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Could not draft follow-up: {e}")
-
-    # Strip ```json / ``` code fences in case the model wraps its JSON reply in one.
-    cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
-
-    try:
-        data = json.loads(cleaned)
-        subject = (data.get("subject") or "").strip()
-        body    = (data.get("body") or "").strip()
-    except Exception:
-        raise HTTPException(status_code=502, detail="Claude did not return a valid draft.")
-
-    if not subject or not body:
-        raise HTTPException(status_code=502, detail="Claude returned an incomplete draft.")
-
-    body = f"{body}\n\n{_FOLLOWUP_UNSUBSCRIBE_LINE}\n{_FOLLOWUP_ADDRESS_PLACEHOLDER}"
-    return {"subject": subject, "body": body}
+    return _render_followup_email(
+        name=req.name,
+        last_service=category,
+        last_service_date=req.last_service_date,
+        has_reroofing=req.has_reroofing,
+        reroofing_last_date=req.reroofing_last_date,
+        business_signal=req.business_signal,
+    )
 
 
 _FOLLOWUP_COLUMN_ALIASES = {
@@ -432,6 +392,22 @@ def _is_master_list(df: pd.DataFrame) -> bool:
     return all(cat.lower() in lowered for cat in _FOLLOWUP_CATEGORIES)
 
 
+def _reroofing_dates(row: "pd.Series", reroofing_col) -> list[date]:
+    """Every parseable date in the row's Re-Roofing column, regardless of age."""
+    if reroofing_col is None or pd.isna(row[reroofing_col]) or not str(row[reroofing_col]).strip():
+        return []
+    dates = []
+    for part in str(row[reroofing_col]).split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            dates.append(datetime.strptime(part, "%m/%d/%Y").date())
+        except ValueError:
+            continue
+    return dates
+
+
 def _parse_master_list(df: pd.DataFrame) -> dict:
     """Wide Master Contact List format: each of the three tracked services has
     its own column of comma-separated MM/DD/YYYY dates (oldest to newest), or
@@ -446,7 +422,9 @@ def _parse_master_list(df: pd.DataFrame) -> dict:
     email_col    = col("email")
     address_col  = col("address")
     prop_col     = col("property type (rlis)")
+    biz_col      = col("business name signal")
     service_cols = {cat: col(cat) for cat in _FOLLOWUP_CATEGORIES}
+    reroofing_col = service_cols.get("Re-Roofing")
 
     cutoff = _years_ago(5)
     total_rows_in_file = len(df)
@@ -478,9 +456,21 @@ def _parse_master_list(df: pd.DataFrame) -> dict:
         if best_date is None:
             continue
 
+        # has_reroofing / reroofing_last_date: ANY Re-Roofing date at any time,
+        # not limited to the 5-year eligibility window above.
+        all_reroofing = _reroofing_dates(row, reroofing_col)
+        has_reroofing = bool(all_reroofing)
+        reroofing_last_date = max(all_reroofing).isoformat() if all_reroofing else ""
+
+        biz_val = "" if biz_col is None or pd.isna(row[biz_col]) else str(row[biz_col]).strip().lower()
+        business_signal = biz_val == "yes"
+
         kept_rows.append({
-            "name":              "" if name_col is None or pd.isna(row[name_col]) else str(row[name_col]).strip(),
-            "email":             email,
+            "name":                 "" if name_col is None or pd.isna(row[name_col]) else str(row[name_col]).strip(),
+            "email":                email,
+            "has_reroofing":        has_reroofing,
+            "reroofing_last_date":  reroofing_last_date,
+            "business_signal":      business_signal,
             "address":           "" if address_col is None or pd.isna(row[address_col]) else str(row[address_col]).strip(),
             "property_type":     "" if prop_col is None or pd.isna(row[prop_col]) else str(row[prop_col]).strip(),
             "last_service":      best_service,
@@ -530,6 +520,12 @@ def followup_preview(file: UploadFile):
     df = df[schema_fields].copy()
     df = df.where(pd.notna(df), "")
     df = df.astype(str)
+
+    # Flat format has no separate Re-Roofing date column — derive from last_service.
+    df["has_reroofing"] = df["last_service"] == "Re-Roofing"
+    df["reroofing_last_date"] = df["last_service_date"].where(df["has_reroofing"], "")
+    # Flat format has no Business Name Signal column.
+    df["business_signal"] = False
 
     rows = df.head(500).to_dict(orient="records")
     return {"rows": rows, "total": len(df)}

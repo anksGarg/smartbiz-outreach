@@ -3,6 +3,10 @@ import { API_URL as API } from '../config'
 
 const TIMEOUT_MSG = 'Something went wrong. Please try again.'
 const CATEGORIES = ['Re-Roofing', 'Gutter Cleaning', 'Pressure Washing']
+const SAMPLE_SLOTS = [
+  { key: 'with_reroofing',    label: 'Has previous re-roofing', hasReroofing: true },
+  { key: 'without_reroofing', label: 'No previous re-roofing',  hasReroofing: false },
+]
 
 // Wraps fetch with a timeout so a hung backend can't leave the UI stuck loading forever.
 async function fetchTimeout(url, opts = {}, ms = 30000) {
@@ -27,7 +31,7 @@ export default function FollowupDrafts() {
   const [uploadError, setUploadError] = useState(null)
   const [filterCategory, setFilterCategory] = useState('')
 
-  // Generated drafts — { [category]: {subject, body, customerName} }. Edits here are local only.
+  // Generated drafts — { [slotKey]: {subject, body_text, body_html, customerName} }. Edits here are local only.
   const [drafts, setDrafts] = useState({})
   const [draftErrors, setDraftErrors] = useState({})
   const [generating, setGenerating] = useState(false)
@@ -69,10 +73,10 @@ export default function FollowupDrafts() {
     setGenerating(true)
     const nextDrafts = {}
     const nextErrors = {}
-    await Promise.all(CATEGORIES.map(async (cat) => {
-      const customer = rows.find(r => (r.last_service || '').trim() === cat)
+    await Promise.all(SAMPLE_SLOTS.map(async (slot) => {
+      const customer = rows.find(r => Boolean(r.has_reroofing) === slot.hasReroofing)
       if (!customer) {
-        nextErrors[cat] = 'No customer found for this category in the uploaded file.'
+        nextErrors[slot.key] = 'No matching customer found in the uploaded file.'
         return
       }
       try {
@@ -81,9 +85,11 @@ export default function FollowupDrafts() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: customer.name,
-            last_service: cat,
+            last_service: customer.last_service,
             last_service_date: customer.last_service_date,
-            address: customer.address,
+            has_reroofing: customer.has_reroofing,
+            reroofing_last_date: customer.reroofing_last_date,
+            business_signal: customer.business_signal,
           }),
         })
         if (!res.ok) {
@@ -91,9 +97,9 @@ export default function FollowupDrafts() {
           throw new Error(err.detail || 'Could not generate draft.')
         }
         const data = await res.json()
-        nextDrafts[cat] = { ...data, customerName: customer.name }
+        nextDrafts[slot.key] = { ...data, customerName: customer.name }
       } catch (e) {
-        nextErrors[cat] = errMsg(e)
+        nextErrors[slot.key] = errMsg(e)
       }
     }))
     setDrafts(prev => ({ ...prev, ...nextDrafts }))
@@ -155,7 +161,7 @@ export default function FollowupDrafts() {
               disabled={generating}
               className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-40 transition-colors whitespace-nowrap"
             >
-              {generating ? 'Generating…' : 'Generate sample'}
+              {generating ? 'Generating…' : 'Generate samples'}
             </button>
           </div>
 
@@ -193,30 +199,37 @@ export default function FollowupDrafts() {
           </div>
 
           {/* Drafts */}
-          <div className="grid gap-4 md:grid-cols-3">
-            {CATEGORIES.map(cat => (
-              <div key={cat} className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-2">
-                <h3 className="text-sm font-semibold text-gray-800">{cat}</h3>
-                {draftErrors[cat] && (
-                  <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{draftErrors[cat]}</p>
+          <div className="grid gap-4 md:grid-cols-2">
+            {SAMPLE_SLOTS.map(slot => (
+              <div key={slot.key} className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-2">
+                <h3 className="text-sm font-semibold text-gray-800">{slot.label}</h3>
+                {draftErrors[slot.key] && (
+                  <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{draftErrors[slot.key]}</p>
                 )}
-                {drafts[cat] ? (
+                {drafts[slot.key] ? (
                   <>
-                    <p className="text-xs text-gray-400">For {drafts[cat].customerName}</p>
+                    <p className="text-xs text-gray-400">For {drafts[slot.key].customerName}</p>
+                    <label className="text-xs text-gray-500 font-medium">Subject</label>
                     <input
-                      value={drafts[cat].subject}
-                      onChange={e => updateDraftField(cat, 'subject', e.target.value)}
+                      value={drafts[slot.key].subject}
+                      onChange={e => updateDraftField(slot.key, 'subject', e.target.value)}
                       className="w-full text-sm font-medium text-gray-800 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                     />
+                    <label className="text-xs text-gray-500 font-medium mt-1">Plain text</label>
                     <textarea
-                      value={drafts[cat].body}
-                      onChange={e => updateDraftField(cat, 'body', e.target.value)}
-                      rows={10}
+                      value={drafts[slot.key].body_text}
+                      onChange={e => updateDraftField(slot.key, 'body_text', e.target.value)}
+                      rows={14}
                       className="w-full text-sm text-gray-700 border border-gray-200 rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-200"
                     />
+                    <label className="text-xs text-gray-500 font-medium mt-1">HTML preview</label>
+                    <div
+                      className="w-full text-sm text-gray-700 border border-gray-200 rounded-lg p-3 bg-gray-50 max-h-80 overflow-y-auto"
+                      dangerouslySetInnerHTML={{ __html: drafts[slot.key].body_html }}
+                    />
                   </>
-                ) : !draftErrors[cat] && (
-                  <p className="text-xs text-gray-400">Click "Generate sample" to draft a message for this category.</p>
+                ) : !draftErrors[slot.key] && (
+                  <p className="text-xs text-gray-400">Click "Generate samples" to draft a message for this case.</p>
                 )}
               </div>
             ))}
