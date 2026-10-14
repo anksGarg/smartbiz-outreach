@@ -6,6 +6,8 @@ Edit the paragraph strings inside render_followup_email() (or the constants
 below) to change wording; nothing else in main.py needs to change.
 """
 
+from __future__ import annotations
+
 import html as _html
 import re as _re
 
@@ -29,6 +31,24 @@ INCLUDE_COMPLIANCE_FOOTER = False
 SUBJECT = "[SUBJECT]"
 FEEDBACK_URL = "[GOOGLE REVIEW LINK]"
 REVIEW_LINK_TEXT = "Please leave us a Google review."
+
+# Literal default values for the placeholders above — used by is_live_ready()
+# to detect whether the owner has actually supplied real copy yet.
+_DEFAULT_MAILING_ADDRESS_PLACEHOLDER = "[BUSINESS MAILING ADDRESS]"
+_DEFAULT_SUBJECT = "[SUBJECT]"
+_DEFAULT_FEEDBACK_URL = "[GOOGLE REVIEW LINK]"
+
+
+def is_live_ready() -> bool:
+    """True only once every placeholder above has been replaced with real
+    copy AND the compliance footer has been turned on. Used to gate live
+    (non-test) sending in /followup/send — see main.py."""
+    return (
+        INCLUDE_COMPLIANCE_FOOTER
+        and MAILING_ADDRESS_PLACEHOLDER != _DEFAULT_MAILING_ADDRESS_PLACEHOLDER
+        and SUBJECT != _DEFAULT_SUBJECT
+        and FEEDBACK_URL != _DEFAULT_FEEDBACK_URL
+    )
 
 _PHONE = "503-410-6919"
 _EMAIL = "info@willametteroof.com"
@@ -125,9 +145,22 @@ def render_followup_email(
     has_reroofing: bool = False,
     reroofing_last_date: str = "",
     business_signal: bool = False,
+    template: str | None = None,
 ) -> dict:
     """Build {subject, body_text, body_html} for one customer. Pure function —
-    no network, no file I/O, no Sheets access."""
+    no network, no file I/O, no Sheets access.
+
+    template ("with_reroofing" | "without_reroofing") controls ONLY whether
+    Section B (the roof-replacement pitch) appears — it is independent of the
+    customer's real has_reroofing/reroofing_last_date history, which always
+    still drives the "{service} in {year}" sentence. Any other/missing value
+    falls back to the historical default: with_reroofing if has_reroofing
+    else without_reroofing (this is what /followup/draft relies on).
+    """
+    if template not in ("with_reroofing", "without_reroofing"):
+        template = "with_reroofing" if has_reroofing else "without_reroofing"
+    show_section_b = template == "without_reroofing"
+
     first_name = "there" if business_signal else _first_name(name)
 
     if has_reroofing:
@@ -158,7 +191,7 @@ def render_followup_email(
         "• New gutters, if yours are sagging or undersized",
         "",
     ]
-    if not has_reroofing:
+    if show_section_b:
         lines.append(
             "If you've also been wondering how much life your roof has left, let's "
             "talk about it now instead of when it starts leaking. Planning a "
@@ -206,7 +239,7 @@ def render_followup_email(
         "<li>New gutters, if yours are sagging or undersized</li>"
         "</ul>",
     ]
-    if not has_reroofing:
+    if show_section_b:
         html_parts.append(
             "<p>If you've also been wondering how much life your roof has left, let's "
             "talk about it now instead of when it starts leaking. Planning a "

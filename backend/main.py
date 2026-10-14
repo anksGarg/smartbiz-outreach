@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import base64
+import html
 import io
 import json
 import os
 import re
 import secrets
+import smtplib
 import struct
+import time as _time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from zoneinfo import ZoneInfo
 
 _TZ = ZoneInfo("America/Los_Angeles")
@@ -31,6 +36,7 @@ from pydantic import BaseModel
 from followup_templates import (
     CATEGORIES as _FOLLOWUP_CATEGORIES,
     render_followup_email as _render_followup_email,
+    is_live_ready as _followup_is_live_ready,
 )
 
 load_dotenv()
@@ -343,6 +349,7 @@ class FollowupDraftRequest(BaseModel):
     has_reroofing: bool = False
     reroofing_last_date: str = ""  # any date-ish string; only the year is used
     business_signal: bool = False
+    template: str = ""             # "with_reroofing" | "without_reroofing"; blank -> default
 
 
 @app.post("/followup/draft")
@@ -361,6 +368,7 @@ def followup_draft(req: FollowupDraftRequest):
         has_reroofing=req.has_reroofing,
         reroofing_last_date=req.reroofing_last_date,
         business_signal=req.business_signal,
+        template=req.template,
     )
 
 
@@ -529,6 +537,173 @@ def followup_preview(file: UploadFile):
 
     rows = df.head(500).to_dict(orient="records")
     return {"rows": rows, "total": len(df)}
+
+
+_FOLLOWUP_SEND_CAP = 50
+_FOLLOWUP_TEMPLATES = ("with_reroofing", "without_reroofing")
+
+
+class FollowupSendItem(BaseModel):
+    name: str = ""
+    email: str = ""
+    last_service: str = ""
+    last_service_date: str = ""
+    has_reroofing: bool = False
+    reroofing_last_date: str = ""
+    business_signal: bool = False
+    template: str = ""  # "with_reroofing" | "without_reroofing"; blank -> default
+
+
+class FollowupSendRequest(BaseModel):
+    items: list[FollowupSendItem] = []
+
+
+def _strip_crlf(s: str) -> str:
+    """Remove CR/LF so customer-supplied text can't inject extra email headers."""
+    return (s or "").replace("\r", "").replace("\n", "")
+
+
+@app.get("/followup/send-mode")
+def followup_send_mode():
+    """Lets the frontend show accurate confirm-dialog wording without
+    hardcoding the test recipient. Never returns SMTP credentials."""
+    send_mode = (os.getenv("FOLLOWUP_SEND_MODE") or "test").strip().lower()
+    result = {"mode": send_mode}
+    if send_mode == "test":
+        result["test_recipient"] = os.getenv("FOLLOWUP_TEST_RECIPIENT", "").strip()
+    return result
+
+
+@app.post("/followup/send")
+def followup_send(req: FollowupSendRequest):
+    """Send the deterministic follow-up template to a batch of customers.
+
+    DEV SAFETY: with FOLLOWUP_SEND_MODE=test (the default), every email goes
+    only to FOLLOWUP_TEST_RECIPIENT — the `email` on each item is never used
+    as the actual send target in test mode. Any other mode is refused (403)
+    unless the template placeholders have all been replaced with real copy
+    (see followup_templates.is_live_ready) — today they have not, so live
+    sending is not possible regardless of FOLLOWUP_SEND_MODE.
+
+    Opens exactly one SMTP connection for the whole request (login once,
+    reused for every message) rather than reconnecting per email.
+    """
+    if len(req.items) > _FOLLOWUP_SEND_CAP:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot send more than {_FOLLOWUP_SEND_CAP} emails in one request.",
+        )
+
+    send_mode = (os.getenv("FOLLOWUP_SEND_MODE") or "test").strip().lower()
+
+    if send_mode != "test" and not _followup_is_live_ready():
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Live sending is disabled: the compliance footer, mailing address, "
+                "subject, and feedback link must all be set to real values first."
+            ),
+        )
+
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = os.getenv("SMTP_PORT")
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_APP_PASSWORD")
+    if not all([smtp_host, smtp_port, smtp_user, smtp_pass]):
+        raise HTTPException(status_code=500, detail="SMTP settings are not fully configured.")
+    try:
+        smtp_port = int(smtp_port)
+    except ValueError:
+        raise HTTPException(status_code=500, detail="SMTP_PORT must be a number.")
+
+    test_recipient = os.getenv("FOLLOWUP_TEST_RECIPIENT", "").strip()
+    if send_mode == "test" and not test_recipient:
+        raise HTTPException(status_code=500, detail="FOLLOWUP_TEST_RECIPIENT is not configured.")
+
+    # One connection, login once, for the whole request.
+    server = None
+    try:
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+    except Exception:
+        if server is not None:
+            try:
+                server.close()
+            except Exception:
+                pass
+        raise HTTPException(status_code=502, detail="SMTP login failed. Check the sending account settings.")
+
+    sent: list[str] = []
+    skipped: list[dict] = []
+    failed: list[dict] = []
+    seen_emails: set[str] = set()
+
+    try:
+        for item in req.items:
+            display_name = _strip_crlf(item.name).strip() or "(no name)"
+            email = item.email.strip()
+
+            if not _FOLLOWUP_EMAIL_RE.match(email):
+                skipped.append({"name": display_name, "reason": "invalid or missing email"})
+                continue
+
+            email_key = email.lower()
+            if email_key in seen_emails:
+                skipped.append({"name": display_name, "reason": "duplicate email in this request"})
+                continue
+            seen_emails.add(email_key)
+
+            template = item.template if item.template in _FOLLOWUP_TEMPLATES else None
+            rendered = _render_followup_email(
+                name=item.name,
+                last_service=item.last_service,
+                last_service_date=item.last_service_date,
+                has_reroofing=item.has_reroofing,
+                reroofing_last_date=item.reroofing_last_date,
+                business_signal=item.business_signal,
+                template=template,
+            )
+            subject    = rendered["subject"]
+            body_text  = rendered["body_text"]
+            body_html  = rendered["body_html"]
+
+            if send_mode == "test":
+                banner = f"TEST MODE: this would have gone to {display_name} <{email}>"
+                body_text = f"{banner}\n\n{body_text}"
+                body_html = f"<p><strong>{html.escape(banner)}</strong></p>\n{body_html}"
+                subject   = f"[TEST] {display_name} - {subject}"
+                to_addr   = test_recipient
+            else:
+                to_addr = email
+
+            subject = _strip_crlf(subject)
+
+            try:
+                msg = MIMEMultipart("alternative")
+                msg["Subject"]  = subject
+                msg["From"]     = f"Willamette Power Roofing <{smtp_user}>"
+                msg["To"]       = to_addr
+                msg["Reply-To"] = smtp_user
+                msg.attach(MIMEText(body_text, "plain"))
+                msg.attach(MIMEText(body_html, "html"))
+
+                server.sendmail(smtp_user, [to_addr], msg.as_string())
+
+                sent.append(display_name)
+                print(f"[followup/send] sent to {display_name!r} (mode={send_mode})", flush=True)
+            except Exception as exc:
+                failed.append({"name": display_name, "error": "Could not send email."})
+                print(f"[followup/send] failed for {display_name!r}: {type(exc).__name__}", flush=True)
+
+            _time.sleep(2)
+    finally:
+        try:
+            server.quit()
+        except Exception:
+            pass
+
+    return {"mode": send_mode, "sent": sent, "skipped": skipped, "failed": failed}
 
 
 # ── Lead Generation — Oregon Metro RLIS ──────────────────────────────────────
