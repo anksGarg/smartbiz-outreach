@@ -87,6 +87,16 @@ export default function FollowupDrafts() {
   const [sendError, setSendError] = useState(null)
   const [sendResult, setSendResult] = useState(null)
 
+  // The raw File from the last upload — kept so "Save to Sheet" can re-send
+  // it to /customers/save. Cleared when loading the saved list instead.
+  const [uploadedFile, setUploadedFile] = useState(null)
+  const [customersStatus, setCustomersStatus] = useState(null) // {label, saved_rows, imported_at}
+  const [loadingSaved, setLoadingSaved] = useState(false)
+  const [loadSavedError, setLoadSavedError] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
+  const [saveMessage, setSaveMessage] = useState(null)
+
   useEffect(() => {
     (async () => {
       try {
@@ -95,6 +105,18 @@ export default function FollowupDrafts() {
         setSendMode(await res.json())
       } catch {
         setSendModeError('Could not check send mode')
+      }
+    })()
+  }, [])
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetchTimeout(`${API}/customers/status`)
+        if (!res.ok) throw new Error()
+        setCustomersStatus(await res.json())
+      } catch {
+        // Badge/"Load saved list" just won't show — not a blocking error.
       }
     })()
   }, [])
@@ -119,6 +141,7 @@ export default function FollowupDrafts() {
       const data = await res.json()
       setRows((data.rows || []).map((r, i) => ({ ...r, _idx: i })))
       setFileName(file.name)
+      setUploadedFile(file)
       setDrafts({})
       setDraftErrors({})
       setSelected(new Set())
@@ -126,10 +149,77 @@ export default function FollowupDrafts() {
       setSendResult(null)
       setSendError(null)
       setSendProgress(null)
+      setSaveMessage(null)
+      setSaveError(null)
     } catch (e) {
       setUploadError(errMsg(e))
     } finally {
       setUploading(false)
+    }
+  }
+
+  async function loadSavedList() {
+    setLoadingSaved(true)
+    setLoadSavedError(null)
+    try {
+      const res = await fetchTimeout(`${API}/followup/preview-saved`, {}, 20000)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || 'Could not load saved list.')
+      }
+      const data = await res.json()
+      setRows((data.rows || []).map((r, i) => ({ ...r, _idx: i })))
+      setFileName('(saved list)')
+      setUploadedFile(null)
+      setDrafts({})
+      setDraftErrors({})
+      setSelected(new Set())
+      setRowTemplates({})
+      setSendResult(null)
+      setSendError(null)
+      setSendProgress(null)
+      setSaveMessage(null)
+      setSaveError(null)
+    } catch (e) {
+      setLoadSavedError(errMsg(e))
+    } finally {
+      setLoadingSaved(false)
+    }
+  }
+
+  async function saveToSheet() {
+    if (!uploadedFile) return
+    const currentRows = customersStatus?.saved_rows ?? 0
+    const label = customersStatus?.label || 'the'
+    const confirmMsg = currentRows
+      ? `This replaces the saved list (${currentRows} rows) in the ${label} sheet. Continue?`
+      : `Save ${rows.length} rows to the ${label} sheet?`
+    const ok = window.confirm(confirmMsg)
+    if (!ok) return
+
+    setSaving(true)
+    setSaveError(null)
+    setSaveMessage(null)
+    try {
+      const form = new FormData()
+      form.append('file', uploadedFile)
+      const res = await fetchTimeout(`${API}/customers/save`, { method: 'POST', body: form }, 30000)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || 'Could not save to Sheet.')
+      }
+      const data = await res.json()
+      setSaveMessage(`Saved ${data.saved_rows} rows`)
+      setCustomersStatus(prev => ({
+        ...(prev || {}),
+        label: data.label,
+        saved_rows: data.saved_rows,
+        imported_at: new Date().toISOString(),
+      }))
+    } catch (e) {
+      setSaveError(errMsg(e))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -294,9 +384,20 @@ export default function FollowupDrafts() {
   return (
     <div className="max-w-5xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-800">Follow-up Drafts</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-2xl font-semibold text-gray-800">Follow-up Drafts</h1>
+          {customersStatus && (
+            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+              (customersStatus.label || '').toUpperCase() === 'PROD'
+                ? 'bg-green-100 text-green-700'
+                : 'bg-red-100 text-red-700'
+            }`}>
+              Data: {customersStatus.label}
+            </span>
+          )}
+        </div>
         <p className="text-gray-500 text-sm mt-0.5">
-          Upload a past-customer list and generate sample follow-up email drafts. Nothing on this page is saved.
+          Upload a past-customer list and generate sample follow-up email drafts. Uploads are saved only when you click Save to Sheet. Drafts are never saved.
         </p>
       </div>
 
@@ -316,6 +417,37 @@ export default function FollowupDrafts() {
         {uploadError && <p className="mt-2 text-sm text-red-600">{uploadError}</p>}
         {fileName && !uploading && !uploadError && (
           <p className="mt-2 text-sm text-gray-500">{fileName} — {rows.length} customer{rows.length !== 1 ? 's' : ''} loaded</p>
+        )}
+
+        {customersStatus && customersStatus.saved_rows > 0 && (
+          <div className="mt-3">
+            <button
+              onClick={loadSavedList}
+              disabled={loadingSaved}
+              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 disabled:opacity-40 transition-colors"
+            >
+              {loadingSaved
+                ? 'Loading…'
+                : `Load saved list (${customersStatus.saved_rows} customers, saved ${
+                    customersStatus.imported_at ? new Date(customersStatus.imported_at).toLocaleString() : 'unknown'
+                  })`}
+            </button>
+            {loadSavedError && <p className="mt-2 text-sm text-red-600">{loadSavedError}</p>}
+          </div>
+        )}
+
+        {uploadedFile && (
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              onClick={saveToSheet}
+              disabled={saving}
+              className="px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-medium hover:bg-gray-900 disabled:opacity-40 transition-colors"
+            >
+              {saving ? 'Saving…' : 'Save to Sheet'}
+            </button>
+            {saveMessage && <p className="text-sm text-green-700">{saveMessage}</p>}
+            {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+          </div>
         )}
       </div>
 

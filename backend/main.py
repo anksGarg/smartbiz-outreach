@@ -126,13 +126,17 @@ def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _parse_file(file: UploadFile) -> pd.DataFrame:
+    # dtype=str: every caller immediately .astype(str)s the result anyway, but
+    # without this, pandas' own type inference can silently strip leading
+    # zeros from a purely-numeric column (e.g. a zip code "08540" -> 8540)
+    # before that .astype(str) ever runs — too late to recover the original.
     content = file.file.read()
     filename = (file.filename or "").lower()
     try:
         if filename.endswith(".xlsx"):
-            return pd.read_excel(io.BytesIO(content), engine="openpyxl")
+            return pd.read_excel(io.BytesIO(content), engine="openpyxl", dtype=str)
         elif filename.endswith(".csv"):
-            return pd.read_csv(io.StringIO(content.decode("utf-8", errors="replace")))
+            return pd.read_csv(io.StringIO(content.decode("utf-8", errors="replace")), dtype=str)
         else:
             raise HTTPException(status_code=400, detail="Only .csv and .xlsx files are supported.")
     except HTTPException:
@@ -495,19 +499,12 @@ def _parse_master_list(df: pd.DataFrame) -> dict:
     }
 
 
-@app.post("/followup/preview")
-def followup_preview(file: UploadFile):
-    """Parse an uploaded customer list for the Follow-up Drafts page.
-
-    Accepts either the flat 6-column format or the wide Master Contact List
-    format (detected via _is_master_list) — reads only the first sheet in an
-    .xlsx, so a "Notes" sheet elsewhere in the workbook is never touched.
-
-    Read-only: never written to disk, contacts.json, or the Google Sheet —
-    the parsed rows only ever live in the response and the browser's memory.
-    """
-    df = _parse_file(file)
-
+def _build_followup_preview(df: pd.DataFrame) -> dict:
+    """Shared eligibility/shaping logic for both /followup/preview (fresh
+    upload) and /followup/preview-saved (previously saved to the Customers
+    Sheet) — same rules, same response shape, regardless of where the rows
+    came from. Accepts either the flat 6-column format or the wide Master
+    Contact List format (detected via _is_master_list)."""
     if _is_master_list(df):
         return _parse_master_list(df)
 
@@ -537,6 +534,233 @@ def followup_preview(file: UploadFile):
 
     rows = df.head(500).to_dict(orient="records")
     return {"rows": rows, "total": len(df)}
+
+
+@app.post("/followup/preview")
+def followup_preview(file: UploadFile):
+    """Parse an uploaded customer list for the Follow-up Drafts page.
+
+    Accepts either the flat 6-column format or the wide Master Contact List
+    format (detected via _is_master_list) — reads only the first sheet in an
+    .xlsx, so a "Notes" sheet elsewhere in the workbook is never touched.
+
+    Read-only: never written to disk, contacts.json, or the Google Sheet —
+    the parsed rows only ever live in the response and the browser's memory.
+    """
+    df = _parse_file(file)
+    return _build_followup_preview(df)
+
+
+# ── Customers Sheet (persisted upload, separate from the time clock Sheet) ──
+# CUSTOMERS_SHEET_ID / CUSTOMERS_SHEET_LABEL are intentionally separate from
+# GOOGLE_SHEET_ID (the time clock's Sheet) so dev and production can point at
+# different spreadsheets independently. No fallback to GOOGLE_SHEET_ID or any
+# literal ID — if CUSTOMERS_SHEET_ID is unset, these endpoints refuse outright.
+# Reuses the same service-account credential-loading approach as the time
+# clock's _get_sheet() (same env vars, same scopes) without modifying it.
+
+_customers_gs_client = None
+
+
+def _get_customers_sheet():
+    sheet_id = os.getenv("CUSTOMERS_SHEET_ID")
+    if not sheet_id:
+        raise HTTPException(status_code=500, detail="CUSTOMERS_SHEET_ID is not configured.")
+
+    global _customers_gs_client
+    if _customers_gs_client is None:
+        try:
+            creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
+            if creds_json:
+                info  = json.loads(creds_json)
+                creds = _SACredentials.from_service_account_info(info, scopes=_SCOPES)
+            else:
+                creds = _SACredentials.from_service_account_file(str(_CREDS_FILE), scopes=_SCOPES)
+            _customers_gs_client = gspread.authorize(creds)
+        except Exception:
+            raise HTTPException(
+                status_code=502,
+                detail="Could not reach the customer Sheet. Check sharing with the service account.",
+            )
+
+    try:
+        return _customers_gs_client.open_by_key(sheet_id)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the customer Sheet. Check sharing with the service account.",
+        )
+
+
+def _get_or_create_ws(sheet, title: str, rows: int, cols: int):
+    try:
+        return sheet.worksheet(title)
+    except gspread.WorksheetNotFound:
+        try:
+            return sheet.add_worksheet(title=title, rows=rows, cols=cols)
+        except Exception:
+            raise HTTPException(
+                status_code=502,
+                detail="Could not reach the customer Sheet. Check sharing with the service account.",
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the customer Sheet. Check sharing with the service account.",
+        )
+
+
+def _customers_ws():
+    return _get_or_create_ws(_get_customers_sheet(), "Customers", rows=1000, cols=26)
+
+
+def _customers_meta_ws():
+    return _get_or_create_ws(_get_customers_sheet(), "Meta", rows=10, cols=5)
+
+
+def _get_ws_if_exists(sheet, title: str):
+    """Read-only lookup — never creates the tab. Returns None if it doesn't
+    exist yet. Only /customers/save is allowed to create tabs."""
+    try:
+        return sheet.worksheet(title)
+    except gspread.WorksheetNotFound:
+        return None
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the customer Sheet. Check sharing with the service account.",
+        )
+
+
+def _customers_ws_readonly():
+    return _get_ws_if_exists(_get_customers_sheet(), "Customers")
+
+
+def _customers_meta_ws_readonly():
+    return _get_ws_if_exists(_get_customers_sheet(), "Meta")
+
+
+@app.post("/customers/save")
+def customers_save(file: UploadFile):
+    """Save an uploaded Master List to the Customers Sheet, replacing whatever
+    was there before. Logs row counts only — never names, emails, or phones."""
+    df = _parse_file(file)
+    label = (os.getenv("CUSTOMERS_SHEET_LABEL") or "unlabeled").strip() or "unlabeled"
+
+    df_str = df.where(pd.notna(df), "").astype(str)
+    header = [str(c) for c in df_str.columns]
+    data_rows = df_str.values.tolist()
+
+    ws = _customers_ws()
+    try:
+        # Resize to exactly the new data's shape first — nothing stale can
+        # remain beyond it, and (unlike clear()) a failed update() doesn't
+        # leave the tab blank in between: the old data is still in place
+        # until the update actually succeeds.
+        ws.resize(rows=len(data_rows) + 1, cols=max(len(header), 1))
+        ws.update([header] + data_rows, value_input_option="RAW")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the customer Sheet. Check sharing with the service account.",
+        )
+
+    saved_rows = len(data_rows)
+    imported_at = datetime.now(_TZ).isoformat()
+
+    meta_ws = _customers_meta_ws()
+    try:
+        meta_ws.resize(rows=2, cols=3)
+        meta_ws.update(
+            [
+                ["imported_at", "row_count", "source_filename"],
+                [imported_at, str(saved_rows), file.filename or ""],
+            ],
+            value_input_option="RAW",
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the customer Sheet. Check sharing with the service account.",
+        )
+
+    print(f"[customers/save] saved {saved_rows} rows (label={label!r})", flush=True)
+    return {"saved_rows": saved_rows, "label": label}
+
+
+@app.get("/customers/status")
+def customers_status():
+    """Read-only: never creates the Customers or Meta tab. No customer data
+    in the response — counts and metadata only."""
+    label = (os.getenv("CUSTOMERS_SHEET_LABEL") or "unlabeled").strip() or "unlabeled"
+
+    ws = _customers_ws_readonly()
+    if ws is None:
+        return {"label": label, "saved_rows": 0}
+
+    try:
+        values = ws.get_all_values()
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the customer Sheet. Check sharing with the service account.",
+        )
+
+    saved_rows = max(len(values) - 1, 0) if values else 0
+    if saved_rows == 0:
+        return {"label": label, "saved_rows": 0}
+
+    imported_at = None
+    meta_ws = _customers_meta_ws_readonly()
+    if meta_ws is not None:
+        try:
+            meta_values = meta_ws.get_all_values()
+        except Exception:
+            raise HTTPException(
+                status_code=502,
+                detail="Could not reach the customer Sheet. Check sharing with the service account.",
+            )
+        if len(meta_values) >= 2:
+            meta_header, meta_row = meta_values[0], meta_values[1]
+            meta = dict(zip(meta_header, meta_row))
+            imported_at = meta.get("imported_at") or None
+
+    return {"label": label, "saved_rows": saved_rows, "imported_at": imported_at}
+
+
+@app.get("/followup/preview-saved")
+def followup_preview_saved():
+    """Same response shape as /followup/preview, sourced from the Customers
+    Sheet instead of a fresh upload — same eligibility rules either way.
+    Read-only: never creates the Customers tab (only /customers/save does)."""
+    ws = _customers_ws_readonly()
+    if ws is None:
+        raise HTTPException(status_code=404, detail="No saved customer list found. Upload and save one first.")
+
+    try:
+        values = ws.get_all_values()
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the customer Sheet. Check sharing with the service account.",
+        )
+
+    if not values or len(values) < 2:
+        raise HTTPException(status_code=404, detail="No saved customer list found. Upload and save one first.")
+
+    header, *data_rows = values
+    df = pd.DataFrame(data_rows, columns=header)
+    return _build_followup_preview(df)
 
 
 _FOLLOWUP_SEND_CAP = 50
