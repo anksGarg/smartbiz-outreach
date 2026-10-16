@@ -27,15 +27,17 @@ MAILING_ADDRESS_PLACEHOLDER = "[BUSINESS MAILING ADDRESS]"
 # is False.
 INCLUDE_COMPLIANCE_FOOTER = False
 
-# Owner has not supplied real copy for these yet — placeholders, do not invent values.
-SUBJECT = "[SUBJECT]"
+# Owner-approved fixed subject — same for every template, not a placeholder.
+SUBJECT = "Checking in from Willamette Power Roofing"
+
+# Owner has not supplied real copy for this yet — placeholder, do not invent a value.
+# FEEDBACK_URL only becomes a clickable link once it's a real https:// URL.
 FEEDBACK_URL = "[GOOGLE REVIEW LINK]"
-REVIEW_LINK_TEXT = "Please leave us a Google review."
 
 # Literal default values for the placeholders above — used by is_live_ready()
-# to detect whether the owner has actually supplied real copy yet.
+# to detect whether the owner has actually supplied real copy yet. SUBJECT is
+# no longer one of these: it's owner-approved fixed copy, not a placeholder.
 _DEFAULT_MAILING_ADDRESS_PLACEHOLDER = "[BUSINESS MAILING ADDRESS]"
-_DEFAULT_SUBJECT = "[SUBJECT]"
 _DEFAULT_FEEDBACK_URL = "[GOOGLE REVIEW LINK]"
 
 
@@ -46,7 +48,6 @@ def is_live_ready() -> bool:
     return (
         INCLUDE_COMPLIANCE_FOOTER
         and MAILING_ADDRESS_PLACEHOLDER != _DEFAULT_MAILING_ADDRESS_PLACEHOLDER
-        and SUBJECT != _DEFAULT_SUBJECT
         and FEEDBACK_URL != _DEFAULT_FEEDBACK_URL
     )
 
@@ -171,99 +172,91 @@ def render_followup_email(
         year = _year_of(last_service_date)
 
     service_phrase = f"{service} in {year}" if year else service
+    service_sentence = f"your {service_phrase}"
+
+    # FEEDBACK_URL only becomes a clickable link / gets appended once it's a
+    # real https:// URL — while it's still the bracketed placeholder, the
+    # review ask stays plain text with no URL attached.
+    feedback_url_is_real = FEEDBACK_URL.startswith("https://")
+
+    review_sentence_text = "Thanks again for your business. If you have a minute, please leave us a Google review."
+    if feedback_url_is_real:
+        review_sentence_text += f" {FEEDBACK_URL}"
 
     # === Plain text ===
     lines = [
         f"Hi {first_name},",
         "",
-        "It's Gus and Ajay from Willamette Power Roofing. We wanted to reach out "
-        "ourselves, because you've trusted us with your home or building with "
-        f"{service_phrase}, and we don't take that lightly.",
+        f"It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with {service_sentence}. "
+        "We don't take that lightly.",
         "",
-        "Rain season is almost here, and we'd hate for you to find out about a "
-        "clogged gutter or a mossy roof the hard way. Our advice this time of year "
-        "is to clean the roof and gutters now, before the first big storm. Leaves, "
-        "moss, and standing water are what turn into rot and leaks, and they are "
-        "much easier to deal with before the rain than after it.",
-        "We'd be glad to help with:",
-        "• Roof cleaning and moss treatment",
-        "• Gutter and downspout flushing",
-        "• New gutters, if yours are sagging or undersized",
+        "With the rainy season close, now is a good time to clear moss and flush gutters before the first "
+        "big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and "
+        "new gutters if yours are sagging or undersized.",
         "",
     ]
     if show_section_b:
         lines.append(
-            "If you've also been wondering how much life your roof has left, let's "
-            "talk about it now instead of when it starts leaking. Planning a "
-            "replacement ahead of time means you choose the timing, not the weather. "
-            "If you go ahead, the new roof comes with a 50-year non-prorated "
-            "warranty and our 15-year workmanship warranty, so you're covered for "
-            "the long haul."
+            "If you've been wondering how much life your roof has left, let's talk about it before it "
+            "starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it "
+            "comes with a 50-year non-prorated warranty and our 15-year workmanship warranty."
         )
         lines.append("")
     lines.extend([
-        "We'll start with a free inspection of your roof and gutters, so you know "
-        "exactly what you need, and nothing you don't.",
-        f"Just reply to this email or call/text {_PHONE} and we'll find a time that works for you.",
+        "We'll start with a free inspection of your roof and gutters, so you know exactly what you need. "
+        f"Just reply to this email or call/text {_PHONE}.",
         "",
-        "Thank you again for your business. It truly means a lot to us and our "
-        f"team. Also please provide your feedback on the last service we provided (here: {FEEDBACK_URL})",
+        review_sentence_text,
         "",
         "Regards,",
-        "Gus And Ajay",
+        "Gus and Ajay",
         "Owners, Willamette Power Roofing",
         f"{_PHONE} | {_EMAIL} | {_WEBSITE}",
         "CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured",
-        REVIEW_LINK_TEXT,
     ])
     body_text = "\n".join(lines)
 
     # === HTML (escape any customer-supplied text) ===
     fn_html = _html.escape(first_name)
     service_phrase_html = _html.escape(service_phrase)
+    service_sentence_html = f"your {service_phrase_html}"
     feedback_url_html = _html.escape(FEEDBACK_URL, quote=True)
+
+    if feedback_url_is_real:
+        review_sentence_html = (
+            "Thanks again for your business. If you have a minute, please leave us a "
+            f'<a href="{feedback_url_html}">Google review</a>.'
+        )
+    else:
+        review_sentence_html = (
+            "Thanks again for your business. If you have a minute, please leave us a Google review."
+        )
+
     html_parts = [
         f"<p>Hi {fn_html},</p>",
-        "<p>It's Gus and Ajay from Willamette Power Roofing. We wanted to reach out "
-        "ourselves, because you've trusted us with your home or building with "
-        f"{service_phrase_html}, and we don't take that lightly.</p>",
-        "<p>Rain season is almost here, and we'd hate for you to find out about a "
-        "clogged gutter or a mossy roof the hard way. Our advice this time of year "
-        "is to clean the roof and gutters now, before the first big storm. Leaves, "
-        "moss, and standing water are what turn into rot and leaks, and they are "
-        "much easier to deal with before the rain than after it.</p>",
-        "<p>We'd be glad to help with:</p>",
-        "<ul>"
-        "<li>Roof cleaning and moss treatment</li>"
-        "<li>Gutter and downspout flushing</li>"
-        "<li>New gutters, if yours are sagging or undersized</li>"
-        "</ul>",
+        f"<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with "
+        f"{service_sentence_html}. We don't take that lightly.</p>",
+        "<p>With the rainy season close, now is a good time to clear moss and flush gutters before the "
+        "first big storm. We can help with roof cleaning and moss treatment, gutter and downspout "
+        "flushing, and new gutters if yours are sagging or undersized.</p>",
     ]
     if show_section_b:
         html_parts.append(
-            "<p>If you've also been wondering how much life your roof has left, let's "
-            "talk about it now instead of when it starts leaking. Planning a "
-            "replacement ahead of time means you choose the timing, not the weather. "
-            "If you go ahead, the new roof comes with a 50-year non-prorated "
-            "warranty and our 15-year workmanship warranty, so you're covered for "
-            "the long haul.</p>"
+            "<p>If you've been wondering how much life your roof has left, let's talk about it before it "
+            "starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it "
+            "comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>"
         )
     html_parts.extend([
-        "<p>We'll start with a free inspection of your roof and gutters, so you know "
-        "exactly what you need, and nothing you don't.</p>",
-        f'<p>Just reply to this email or call/text <a href="tel:{_PHONE}">{_PHONE}</a> '
-        "and we'll find a time that works for you.</p>",
-        "<p>Thank you again for your business. It truly means a lot to us and our "
-        "team. Also please provide your feedback on the last service we provided "
-        f'(<a href="{feedback_url_html}">here</a>)</p>',
+        "<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you "
+        f'need. Just reply to this email or call/text <a href="tel:{_PHONE}">{_PHONE}</a>.</p>',
+        f"<p>{review_sentence_html}</p>",
         "<p>Regards,<br>"
-        "Gus And Ajay<br>"
+        "Gus and Ajay<br>"
         "Owners, Willamette Power Roofing<br>"
         f'<a href="tel:{_PHONE}">{_PHONE}</a> | '
         f'<a href="mailto:{_EMAIL}">{_EMAIL}</a> | '
         f'<a href="{_WEBSITE_URL}">{_WEBSITE}</a><br>'
-        "CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured<br>"
-        f'<a href="{feedback_url_html}">{_html.escape(REVIEW_LINK_TEXT)}</a></p>',
+        "CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p>",
     ])
     body_html = "\n".join(html_parts)
 
