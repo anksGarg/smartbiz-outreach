@@ -56,6 +56,50 @@ _EMAIL = "info@willametteroof.com"
 _WEBSITE = "www.willametteroof.com"
 _WEBSITE_URL = "https://www.willametteroof.com"
 
+
+def signature_text() -> str:
+    """Standard plain-text signature block, shared by the follow-up template
+    and the custom email (see custom_email.py)."""
+    return (
+        "Regards,\n"
+        "Gus and Ajay\n"
+        "Owners, Willamette Power Roofing\n"
+        f"{_PHONE} | {_EMAIL} | {_WEBSITE}\n"
+        "CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured"
+    )
+
+
+def signature_html() -> str:
+    """Standard HTML signature block, shared by the follow-up template and
+    the custom email (see custom_email.py)."""
+    return (
+        "<p>Regards,<br>"
+        "Gus and Ajay<br>"
+        "Owners, Willamette Power Roofing<br>"
+        f'<a href="tel:{_PHONE}">{_PHONE}</a> | '
+        f'<a href="mailto:{_EMAIL}">{_EMAIL}</a> | '
+        f'<a href="{_WEBSITE_URL}">{_WEBSITE}</a><br>'
+        "CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p>"
+    )
+
+
+def compliance_footer_text() -> str:
+    """Plain-text unsubscribe + mailing-address footer, or '' while
+    INCLUDE_COMPLIANCE_FOOTER is off. Shared by the follow-up template and
+    the custom email (see custom_email.py)."""
+    if not INCLUDE_COMPLIANCE_FOOTER:
+        return ""
+    return f"\n\n{UNSUBSCRIBE_LINE}\n{MAILING_ADDRESS_PLACEHOLDER}"
+
+
+def compliance_footer_html() -> str:
+    """HTML unsubscribe + mailing-address footer, or '' while
+    INCLUDE_COMPLIANCE_FOOTER is off. Shared by the follow-up template and
+    the custom email (see custom_email.py)."""
+    if not INCLUDE_COMPLIANCE_FOOTER:
+        return ""
+    return f"<p>{_html.escape(UNSUBSCRIBE_LINE)}<br>{_html.escape(MAILING_ADDRESS_PLACEHOLDER)}</p>"
+
 # Name-based "looks like a business, not a person" detector for {first_name}.
 _BUSINESS_WORDS = {
     "llc", "inc", "corp", "co", "company", "roofing", "construction",
@@ -208,11 +252,7 @@ def render_followup_email(
         "",
         review_sentence_text,
         "",
-        "Regards,",
-        "Gus and Ajay",
-        "Owners, Willamette Power Roofing",
-        f"{_PHONE} | {_EMAIL} | {_WEBSITE}",
-        "CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured",
+        signature_text(),
     ])
     body_text = "\n".join(lines)
 
@@ -250,18 +290,11 @@ def render_followup_email(
         "<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you "
         f'need. Just reply to this email or call/text <a href="tel:{_PHONE}">{_PHONE}</a>.</p>',
         f"<p>{review_sentence_html}</p>",
-        "<p>Regards,<br>"
-        "Gus and Ajay<br>"
-        "Owners, Willamette Power Roofing<br>"
-        f'<a href="tel:{_PHONE}">{_PHONE}</a> | '
-        f'<a href="mailto:{_EMAIL}">{_EMAIL}</a> | '
-        f'<a href="{_WEBSITE_URL}">{_WEBSITE}</a><br>'
-        "CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p>",
+        signature_html(),
     ])
     body_html = "\n".join(html_parts)
 
-    if INCLUDE_COMPLIANCE_FOOTER:
-        body_text += f"\n\n{UNSUBSCRIBE_LINE}\n{MAILING_ADDRESS_PLACEHOLDER}"
-        body_html += f"<p>{_html.escape(UNSUBSCRIBE_LINE)}<br>{_html.escape(MAILING_ADDRESS_PLACEHOLDER)}</p>"
+    body_text += compliance_footer_text()
+    body_html += compliance_footer_html()
 
     return {"subject": SUBJECT, "body_text": body_text, "body_html": body_html}

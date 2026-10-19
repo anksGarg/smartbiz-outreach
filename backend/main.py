@@ -37,7 +37,9 @@ from followup_templates import (
     CATEGORIES as _FOLLOWUP_CATEGORIES,
     render_followup_email as _render_followup_email,
     is_live_ready as _followup_is_live_ready,
+    _first_name as _followup_first_name,
 )
+import custom_email as _ce
 
 load_dotenv()
 
@@ -798,37 +800,18 @@ def followup_send_mode():
     return result
 
 
-@app.post("/followup/send")
-def followup_send(req: FollowupSendRequest):
-    """Send the deterministic follow-up template to a batch of customers.
+def _send_rendered_emails(rendered_items: list[dict], send_mode: str) -> dict:
+    """Shared SMTP send loop for /followup/send and /custom-email/send.
 
-    DEV SAFETY: with FOLLOWUP_SEND_MODE=test (the default), every email goes
-    only to FOLLOWUP_TEST_RECIPIENT — the `email` on each item is never used
-    as the actual send target in test mode. Any other mode is refused (403)
-    unless the template placeholders have all been replaced with real copy
-    (see followup_templates.is_live_ready) — today they have not, so live
-    sending is not possible regardless of FOLLOWUP_SEND_MODE.
-
-    Opens exactly one SMTP connection for the whole request (login once,
-    reused for every message) rather than reconnecting per email.
+    Each item in rendered_items is already fully rendered for one recipient:
+    {"display_name", "email", "subject", "body_text", "body_html"} — this
+    function only handles the SMTP/test-mode mechanics, identical for both
+    callers: one connection (login once, reused for every message), the
+    test-mode recipient lock + TEST banner + "[TEST] <name> - " subject
+    prefix, CRLF-stripped subject, and a 2s pause between sends. Returns
+    {"sent": [...], "failed": [...]} — duplicate/invalid-email skipping and
+    the request-level cap are each caller's responsibility, before this runs.
     """
-    if len(req.items) > _FOLLOWUP_SEND_CAP:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot send more than {_FOLLOWUP_SEND_CAP} emails in one request.",
-        )
-
-    send_mode = (os.getenv("FOLLOWUP_SEND_MODE") or "test").strip().lower()
-
-    if send_mode != "test" and not _followup_is_live_ready():
-        raise HTTPException(
-            status_code=403,
-            detail=(
-                "Live sending is disabled: the compliance footer, mailing address, "
-                "subject, and feedback link must all be set to real values first."
-            ),
-        )
-
     smtp_host = os.getenv("SMTP_HOST")
     smtp_port = os.getenv("SMTP_PORT")
     smtp_user = os.getenv("SMTP_USER")
@@ -859,38 +842,15 @@ def followup_send(req: FollowupSendRequest):
         raise HTTPException(status_code=502, detail="SMTP login failed. Check the sending account settings.")
 
     sent: list[str] = []
-    skipped: list[dict] = []
     failed: list[dict] = []
-    seen_emails: set[str] = set()
 
     try:
-        for item in req.items:
-            display_name = _strip_crlf(item.name).strip() or "(no name)"
-            email = item.email.strip()
-
-            if not _FOLLOWUP_EMAIL_RE.match(email):
-                skipped.append({"name": display_name, "reason": "invalid or missing email"})
-                continue
-
-            email_key = email.lower()
-            if email_key in seen_emails:
-                skipped.append({"name": display_name, "reason": "duplicate email in this request"})
-                continue
-            seen_emails.add(email_key)
-
-            template = item.template if item.template in _FOLLOWUP_TEMPLATES else None
-            rendered = _render_followup_email(
-                name=item.name,
-                last_service=item.last_service,
-                last_service_date=item.last_service_date,
-                has_reroofing=item.has_reroofing,
-                reroofing_last_date=item.reroofing_last_date,
-                business_signal=item.business_signal,
-                template=template,
-            )
-            subject    = rendered["subject"]
-            body_text  = rendered["body_text"]
-            body_html  = rendered["body_html"]
+        for item in rendered_items:
+            display_name = item["display_name"]
+            email        = item["email"]
+            subject      = item["subject"]
+            body_text    = item["body_text"]
+            body_html    = item["body_html"]
 
             if send_mode == "test":
                 banner = f"TEST MODE: this would have gone to {display_name} <{email}>"
@@ -915,10 +875,10 @@ def followup_send(req: FollowupSendRequest):
                 server.sendmail(smtp_user, [to_addr], msg.as_string())
 
                 sent.append(display_name)
-                print(f"[followup/send] sent to {display_name!r} (mode={send_mode})", flush=True)
+                print(f"[email send] sent to {display_name!r} (mode={send_mode})", flush=True)
             except Exception as exc:
                 failed.append({"name": display_name, "error": "Could not send email."})
-                print(f"[followup/send] failed for {display_name!r}: {type(exc).__name__}", flush=True)
+                print(f"[email send] failed for {display_name!r}: {type(exc).__name__}", flush=True)
 
             _time.sleep(2)
     finally:
@@ -927,7 +887,285 @@ def followup_send(req: FollowupSendRequest):
         except Exception:
             pass
 
-    return {"mode": send_mode, "sent": sent, "skipped": skipped, "failed": failed}
+    return {"sent": sent, "failed": failed}
+
+
+@app.post("/followup/send")
+def followup_send(req: FollowupSendRequest):
+    """Send the deterministic follow-up template to a batch of customers.
+
+    DEV SAFETY: with FOLLOWUP_SEND_MODE=test (the default), every email goes
+    only to FOLLOWUP_TEST_RECIPIENT — the `email` on each item is never used
+    as the actual send target in test mode. Any other mode is refused (403)
+    unless the template placeholders have all been replaced with real copy
+    (see followup_templates.is_live_ready) — today they have not, so live
+    sending is not possible regardless of FOLLOWUP_SEND_MODE.
+    """
+    if len(req.items) > _FOLLOWUP_SEND_CAP:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot send more than {_FOLLOWUP_SEND_CAP} emails in one request.",
+        )
+
+    send_mode = (os.getenv("FOLLOWUP_SEND_MODE") or "test").strip().lower()
+
+    if send_mode != "test" and not _followup_is_live_ready():
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Live sending is disabled: the compliance footer, mailing address, "
+                "subject, and feedback link must all be set to real values first."
+            ),
+        )
+
+    skipped: list[dict] = []
+    seen_emails: set[str] = set()
+    rendered_items: list[dict] = []
+
+    for item in req.items:
+        display_name = _strip_crlf(item.name).strip() or "(no name)"
+        email = item.email.strip()
+
+        if not _FOLLOWUP_EMAIL_RE.match(email):
+            skipped.append({"name": display_name, "reason": "invalid or missing email"})
+            continue
+
+        email_key = email.lower()
+        if email_key in seen_emails:
+            skipped.append({"name": display_name, "reason": "duplicate email in this request"})
+            continue
+        seen_emails.add(email_key)
+
+        template = item.template if item.template in _FOLLOWUP_TEMPLATES else None
+        rendered = _render_followup_email(
+            name=item.name,
+            last_service=item.last_service,
+            last_service_date=item.last_service_date,
+            has_reroofing=item.has_reroofing,
+            reroofing_last_date=item.reroofing_last_date,
+            business_signal=item.business_signal,
+            template=template,
+        )
+        rendered_items.append({
+            "display_name": display_name,
+            "email": email,
+            "subject": rendered["subject"],
+            "body_text": rendered["body_text"],
+            "body_html": rendered["body_html"],
+        })
+
+    result = _send_rendered_emails(rendered_items, send_mode)
+    return {"mode": send_mode, "sent": result["sent"], "skipped": skipped, "failed": result["failed"]}
+
+
+# ── Custom Email (owner-written or AI-drafted, to an uploaded list) ─────────
+
+_CUSTOM_EMAIL_NAME_ALIASES = ["name", "full name", "customer name"]
+_CUSTOM_EMAIL_EMAIL_ALIASES = ["email", "e-mail", "email address"]
+_CUSTOM_EMAIL_SUBJECT_MAX = 150
+_CUSTOM_EMAIL_BODY_MAX = 5000
+
+
+@app.post("/custom-email/preview-list")
+def custom_email_preview_list(file: UploadFile):
+    """Parse an uploaded customer list for the Custom Email page (first sheet
+    only, read with dtype=str). Detects Name/Email columns case-insensitively.
+    Read-only: nothing is written to disk, Sheets, or logs."""
+    df = _parse_file(file)
+    lowered = {col.strip().lower(): col for col in df.columns}
+
+    name_col = next((lowered[a] for a in _CUSTOM_EMAIL_NAME_ALIASES if a in lowered), None)
+    email_col = next((lowered[a] for a in _CUSTOM_EMAIL_EMAIL_ALIASES if a in lowered), None)
+    if email_col is None:
+        raise HTTPException(
+            status_code=400,
+            detail="No email column found. Expected a column named Email, E-mail, or Email Address.",
+        )
+
+    seen_emails: set[str] = set()
+    rows = []
+    valid = duplicates = invalid = 0
+
+    for _, row in df.iterrows():
+        raw_name = "" if name_col is None or pd.isna(row[name_col]) else str(row[name_col]).strip()
+        raw_email = "" if pd.isna(row[email_col]) else str(row[email_col]).strip()
+
+        is_valid_email = bool(_FOLLOWUP_EMAIL_RE.match(raw_email))
+        email_key = raw_email.lower()
+        is_duplicate = is_valid_email and email_key in seen_emails
+        if is_valid_email and not is_duplicate:
+            seen_emails.add(email_key)
+
+        if not is_valid_email:
+            invalid += 1
+        elif is_duplicate:
+            duplicates += 1
+        else:
+            valid += 1
+
+        rows.append({
+            "name": raw_name,
+            "email": raw_email,
+            "first_name": _followup_first_name(raw_name),
+            "email_valid": is_valid_email,
+            "duplicate": is_duplicate,
+        })
+
+    return {"rows": rows, "total": len(df), "valid": valid, "duplicates": duplicates, "invalid": invalid}
+
+
+class CustomEmailRenderRequest(BaseModel):
+    subject: str = ""
+    body: str = ""
+    name: str = ""
+
+
+@app.post("/custom-email/render")
+def custom_email_render(req: CustomEmailRenderRequest):
+    """Render the owner's subject/body for one recipient, with placeholders
+    substituted and the standard signature/footer appended. Pure — no SMTP,
+    no file I/O."""
+    if len(req.subject) > _CUSTOM_EMAIL_SUBJECT_MAX:
+        raise HTTPException(status_code=400, detail=f"Subject must be {_CUSTOM_EMAIL_SUBJECT_MAX} characters or fewer.")
+    if len(req.body) > _CUSTOM_EMAIL_BODY_MAX:
+        raise HTTPException(status_code=400, detail=f"Message must be {_CUSTOM_EMAIL_BODY_MAX} characters or fewer.")
+
+    return _ce.render_custom_email(subject=req.subject, body=req.body, name=req.name)
+
+
+class CustomEmailSendItem(BaseModel):
+    name: str = ""
+    email: str = ""
+
+
+class CustomEmailSendRequest(BaseModel):
+    subject: str = ""
+    body: str = ""
+    items: list[CustomEmailSendItem] = []
+
+
+@app.post("/custom-email/send")
+def custom_email_send(req: CustomEmailSendRequest):
+    """Send the owner's custom email to a batch of recipients. Rejects the
+    whole request (400, nothing sent) for an empty subject/body or unknown
+    placeholders — same checks as /custom-email/render, enforced up front
+    instead of being merely reported as warnings. Same test/live-mode
+    safeguards as /followup/send, via the shared _send_rendered_emails."""
+    if len(req.items) > _FOLLOWUP_SEND_CAP:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot send more than {_FOLLOWUP_SEND_CAP} emails in one request.",
+        )
+
+    subject = req.subject
+    body = req.body
+    if len(subject) > _CUSTOM_EMAIL_SUBJECT_MAX:
+        raise HTTPException(status_code=400, detail=f"Subject must be {_CUSTOM_EMAIL_SUBJECT_MAX} characters or fewer.")
+    if len(body) > _CUSTOM_EMAIL_BODY_MAX:
+        raise HTTPException(status_code=400, detail=f"Message must be {_CUSTOM_EMAIL_BODY_MAX} characters or fewer.")
+    if not subject.strip():
+        raise HTTPException(status_code=400, detail="Subject is required.")
+    if not body.strip():
+        raise HTTPException(status_code=400, detail="Message is required.")
+
+    unknown = _ce._dedupe(_ce.unknown_placeholders(subject) + _ce.unknown_placeholders(body))
+    if unknown:
+        raise HTTPException(status_code=400, detail=f"Unknown placeholder(s): {', '.join(unknown)}")
+
+    send_mode = (os.getenv("FOLLOWUP_SEND_MODE") or "test").strip().lower()
+    if send_mode != "test" and not _ce.custom_email_live_ready():
+        raise HTTPException(
+            status_code=403,
+            detail="Live sending is disabled: the compliance footer and a real mailing address must be set first.",
+        )
+
+    skipped: list[dict] = []
+    seen_emails: set[str] = set()
+    rendered_items: list[dict] = []
+
+    for item in req.items:
+        display_name = _strip_crlf(item.name).strip() or "(no name)"
+        email = item.email.strip()
+
+        if not _FOLLOWUP_EMAIL_RE.match(email):
+            skipped.append({"name": display_name, "reason": "invalid or missing email"})
+            continue
+
+        email_key = email.lower()
+        if email_key in seen_emails:
+            skipped.append({"name": display_name, "reason": "duplicate email in this request"})
+            continue
+        seen_emails.add(email_key)
+
+        rendered = _ce.render_custom_email(subject=subject, body=body, name=item.name)
+        rendered_items.append({
+            "display_name": display_name,
+            "email": email,
+            "subject": rendered["subject"],
+            "body_text": rendered["body_text"],
+            "body_html": rendered["body_html"],
+        })
+
+    result = _send_rendered_emails(rendered_items, send_mode)
+    return {"mode": send_mode, "sent": result["sent"], "skipped": skipped, "failed": result["failed"]}
+
+
+_LAST_GENERATE_AT = {"ts": 0.0}
+_GENERATE_COOLDOWN_SECONDS = 3.0
+_GENERATE_MODEL = "claude-opus-4-8"
+
+
+class CustomEmailGenerateRequest(BaseModel):
+    instruction: str = ""
+    tone: str = ""
+
+
+@app.post("/custom-email/generate")
+def custom_email_generate(req: CustomEmailGenerateRequest):
+    """AI-draft a subject/body from the owner's instruction. PRIVACY: the
+    model call contains only the instruction, the tone, and fixed business
+    context/rules — never any customer name, email, or uploaded list data.
+    Logs only that a generation happened and its length, never the
+    instruction text."""
+    now = _time.time()
+    if now - _LAST_GENERATE_AT["ts"] < _GENERATE_COOLDOWN_SECONDS:
+        raise HTTPException(status_code=429, detail="Please wait a moment before generating again.")
+
+    instruction = (req.instruction or "").strip()
+    if not instruction or len(instruction) > 1000:
+        raise HTTPException(status_code=400, detail="instruction must be between 1 and 1000 characters.")
+
+    tone = _ce.normalize_tone(req.tone)
+    word_limit = 70 if tone == "short" else 120
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="AI drafting is not configured.")
+
+    _LAST_GENERATE_AT["ts"] = now
+
+    system_prompt = _ce.build_generate_system_prompt(tone, word_limit)
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model=_GENERATE_MODEL,
+            max_tokens=400,
+            system=system_prompt,
+            messages=[{"role": "user", "content": instruction}],
+            timeout=30,
+        )
+        parsed = _ce.parse_generate_reply(response.content[0].text)
+    except Exception:
+        raise HTTPException(status_code=502, detail="Could not generate a draft. Please try again.")
+
+    subject = _strip_crlf(parsed["subject"]).strip()
+    body = parsed["body"]
+
+    unknown = _ce._dedupe(_ce.unknown_placeholders(subject) + _ce.unknown_placeholders(body))
+    warnings = [f"Unknown placeholder(s): {', '.join(unknown)}"] if unknown else []
+
+    print(f"[custom-email/generate] generated draft (tone={tone}, body_chars={len(body)})", flush=True)
+    return {"subject": subject, "body": body, "warnings": warnings}
 
 
 # ── Lead Generation — Oregon Metro RLIS ──────────────────────────────────────
