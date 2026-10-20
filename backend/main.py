@@ -579,7 +579,9 @@ def _get_customers_sheet():
             else:
                 creds = _SACredentials.from_service_account_file(str(_CREDS_FILE), scopes=_SCOPES)
             _customers_gs_client = gspread.authorize(creds)
-        except Exception:
+        except Exception as exc:
+            status = _exception_status_code(exc)
+            print(f"[customers] sheet unreachable: {type(exc).__name__} status={status if status is not None else 'none'}", flush=True)
             raise HTTPException(
                 status_code=502,
                 detail="Could not reach the customer Sheet. Check sharing with the service account.",
@@ -589,7 +591,9 @@ def _get_customers_sheet():
         return _customers_gs_client.open_by_key(sheet_id)
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
+        status = _exception_status_code(exc)
+        print(f"[customers] sheet unreachable: {type(exc).__name__} status={status if status is not None else 'none'}", flush=True)
         raise HTTPException(
             status_code=502,
             detail="Could not reach the customer Sheet. Check sharing with the service account.",
@@ -602,14 +606,18 @@ def _get_or_create_ws(sheet, title: str, rows: int, cols: int):
     except gspread.WorksheetNotFound:
         try:
             return sheet.add_worksheet(title=title, rows=rows, cols=cols)
-        except Exception:
+        except Exception as exc:
+            status = _exception_status_code(exc)
+            print(f"[customers] sheet unreachable: {type(exc).__name__} status={status if status is not None else 'none'}", flush=True)
             raise HTTPException(
                 status_code=502,
                 detail="Could not reach the customer Sheet. Check sharing with the service account.",
             )
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
+        status = _exception_status_code(exc)
+        print(f"[customers] sheet unreachable: {type(exc).__name__} status={status if status is not None else 'none'}", flush=True)
         raise HTTPException(
             status_code=502,
             detail="Could not reach the customer Sheet. Check sharing with the service account.",
@@ -633,7 +641,9 @@ def _get_ws_if_exists(sheet, title: str):
         return None
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
+        status = _exception_status_code(exc)
+        print(f"[customers] sheet unreachable: {type(exc).__name__} status={status if status is not None else 'none'}", flush=True)
         raise HTTPException(
             status_code=502,
             detail="Could not reach the customer Sheet. Check sharing with the service account.",
@@ -669,7 +679,9 @@ def customers_save(file: UploadFile):
         ws.update([header] + data_rows, value_input_option="RAW")
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
+        status = _exception_status_code(exc)
+        print(f"[customers] sheet unreachable: {type(exc).__name__} status={status if status is not None else 'none'}", flush=True)
         raise HTTPException(
             status_code=502,
             detail="Could not reach the customer Sheet. Check sharing with the service account.",
@@ -690,7 +702,9 @@ def customers_save(file: UploadFile):
         )
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
+        status = _exception_status_code(exc)
+        print(f"[customers] sheet unreachable: {type(exc).__name__} status={status if status is not None else 'none'}", flush=True)
         raise HTTPException(
             status_code=502,
             detail="Could not reach the customer Sheet. Check sharing with the service account.",
@@ -712,7 +726,9 @@ def customers_status():
 
     try:
         values = ws.get_all_values()
-    except Exception:
+    except Exception as exc:
+        status = _exception_status_code(exc)
+        print(f"[customers] sheet unreachable: {type(exc).__name__} status={status if status is not None else 'none'}", flush=True)
         raise HTTPException(
             status_code=502,
             detail="Could not reach the customer Sheet. Check sharing with the service account.",
@@ -727,7 +743,9 @@ def customers_status():
     if meta_ws is not None:
         try:
             meta_values = meta_ws.get_all_values()
-        except Exception:
+        except Exception as exc:
+            status = _exception_status_code(exc)
+            print(f"[customers] sheet unreachable: {type(exc).__name__} status={status if status is not None else 'none'}", flush=True)
             raise HTTPException(
                 status_code=502,
                 detail="Could not reach the customer Sheet. Check sharing with the service account.",
@@ -751,7 +769,9 @@ def followup_preview_saved():
 
     try:
         values = ws.get_all_values()
-    except Exception:
+    except Exception as exc:
+        status = _exception_status_code(exc)
+        print(f"[customers] sheet unreachable: {type(exc).__name__} status={status if status is not None else 'none'}", flush=True)
         raise HTTPException(
             status_code=502,
             detail="Could not reach the customer Sheet. Check sharing with the service account.",
@@ -787,6 +807,24 @@ class FollowupSendRequest(BaseModel):
 def _strip_crlf(s: str) -> str:
     """Remove CR/LF so customer-supplied text can't inject extra email headers."""
     return (s or "").replace("\r", "").replace("\n", "")
+
+
+def _exception_status_code(exc: Exception):
+    """Best-effort numeric status/code off an exception, for diagnostic
+    logging only — NEVER the exception message, which can embed addresses,
+    IDs, or other sensitive detail. Covers anthropic.APIStatusError
+    (.status_code), smtplib.SMTPResponseException (.smtp_code), and
+    gspread.exceptions.APIError (.code, or .response.status_code). Returns
+    None when the exception has no such attribute."""
+    for attr in ("status_code", "smtp_code", "code"):
+        value = getattr(exc, attr, None)
+        if isinstance(value, int):
+            return value
+    response = getattr(exc, "response", None)
+    value = getattr(response, "status_code", None)
+    if isinstance(value, int):
+        return value
+    return None
 
 
 @app.get("/followup/send-mode")
@@ -833,12 +871,14 @@ def _send_rendered_emails(rendered_items: list[dict], send_mode: str) -> dict:
         server = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
         server.starttls()
         server.login(smtp_user, smtp_pass)
-    except Exception:
+    except Exception as exc:
         if server is not None:
             try:
                 server.close()
             except Exception:
                 pass
+        code = _exception_status_code(exc)
+        print(f"[email send] SMTP login failed: {type(exc).__name__} code={code if code is not None else 'none'}", flush=True)
         raise HTTPException(status_code=502, detail="SMTP login failed. Check the sending account settings.")
 
     sent: list[str] = []
@@ -1155,7 +1195,9 @@ def custom_email_generate(req: CustomEmailGenerateRequest):
             timeout=30,
         )
         parsed = _ce.parse_generate_reply(response.content[0].text)
-    except Exception:
+    except Exception as exc:
+        status = _exception_status_code(exc)
+        print(f"[custom-email/generate] failed: {type(exc).__name__} status={status if status is not None else 'none'}", flush=True)
         raise HTTPException(status_code=502, detail="Could not generate a draft. Please try again.")
 
     subject = _strip_crlf(parsed["subject"]).strip()
