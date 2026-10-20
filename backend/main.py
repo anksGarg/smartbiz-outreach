@@ -37,6 +37,7 @@ from followup_templates import (
     CATEGORIES as _FOLLOWUP_CATEGORIES,
     render_followup_email as _render_followup_email,
     is_live_ready as _followup_is_live_ready,
+    live_override_enabled as _live_override_enabled,
     _first_name as _followup_first_name,
 )
 import custom_email as _ce
@@ -949,14 +950,17 @@ def followup_send(req: FollowupSendRequest):
 
     send_mode = (os.getenv("FOLLOWUP_SEND_MODE") or "test").strip().lower()
 
-    if send_mode != "test" and not _followup_is_live_ready():
-        raise HTTPException(
-            status_code=403,
-            detail=(
-                "Live sending is disabled: the compliance footer, mailing address, "
-                "subject, and feedback link must all be set to real values first."
-            ),
-        )
+    if send_mode != "test":
+        if not _followup_is_live_ready():
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Live sending is disabled: the compliance footer, mailing address, "
+                    "subject, and feedback link must all be set to real values first."
+                ),
+            )
+        if _live_override_enabled():
+            print("[followup/send] live send without mailing address (override on)", flush=True)
 
     skipped: list[dict] = []
     seen_emails: set[str] = set()
@@ -1113,11 +1117,14 @@ def custom_email_send(req: CustomEmailSendRequest):
         raise HTTPException(status_code=400, detail=f"Unknown placeholder(s): {', '.join(unknown)}")
 
     send_mode = (os.getenv("FOLLOWUP_SEND_MODE") or "test").strip().lower()
-    if send_mode != "test" and not _ce.custom_email_live_ready():
-        raise HTTPException(
-            status_code=403,
-            detail="Live sending is disabled: the compliance footer and a real mailing address must be set first.",
-        )
+    if send_mode != "test":
+        if not _ce.custom_email_live_ready():
+            raise HTTPException(
+                status_code=403,
+                detail="Live sending is disabled: the compliance footer and a real mailing address must be set first.",
+            )
+        if _live_override_enabled():
+            print("[custom-email/send] live send without mailing address (override on)", flush=True)
 
     skipped: list[dict] = []
     seen_emails: set[str] = set()
