@@ -121,11 +121,17 @@ def render_custom_email(subject: str, body: str, name: str) -> dict:
 
 
 def custom_email_live_ready() -> bool:
-    """True only once the compliance footer is on AND a real mailing address
-    has replaced the placeholder — same bar as followup_templates.is_live_ready,
-    minus the follow-up template's own FEEDBACK_URL/subject requirements, which
-    don't apply to a custom email. Used to gate live (non-test) sending in
+    """True once the compliance footer is on AND a real mailing address has
+    replaced the placeholder — same bar as followup_templates.is_live_ready,
+    minus the follow-up template's own FEEDBACK_URL/subject requirements,
+    which don't apply to a custom email — OR when
+    followup_templates.live_override_enabled() is True. Calls that single
+    shared gate (the same one is_live_ready() calls) rather than checking
+    the override env var itself, so there is exactly one place that bypass
+    can ever be defined. Used to gate live (non-test) sending in
     /custom-email/send — see main.py."""
+    if _ft.live_override_enabled():
+        return True
     return (
         _ft.INCLUDE_COMPLIANCE_FOOTER
         and _ft.MAILING_ADDRESS_PLACEHOLDER != _ft._DEFAULT_MAILING_ADDRESS_PLACEHOLDER

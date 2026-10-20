@@ -9,6 +9,7 @@ below) to change wording; nothing else in main.py needs to change.
 from __future__ import annotations
 
 import html as _html
+import os as _os
 import re as _re
 
 CATEGORIES = ["Re-Roofing", "Gutter Cleaning", "Pressure Washing"]
@@ -41,10 +42,23 @@ _DEFAULT_MAILING_ADDRESS_PLACEHOLDER = "[BUSINESS MAILING ADDRESS]"
 _DEFAULT_FEEDBACK_URL = "[GOOGLE REVIEW LINK]"
 
 
+def live_override_enabled() -> bool:
+    """True only when FOLLOWUP_ALLOW_LIVE_WITHOUT_ADDRESS is exactly "true"
+    (case-insensitive, trimmed) — an explicit, opt-in production override
+    that skips ONLY the mailing-address/footer readiness requirement below.
+    Unset or any other value behaves exactly as before. This is the single
+    shared gate: is_live_ready() below and custom_email.custom_email_live_ready()
+    both call this one function — there is no other bypass."""
+    return (_os.getenv("FOLLOWUP_ALLOW_LIVE_WITHOUT_ADDRESS") or "").strip().lower() == "true"
+
+
 def is_live_ready() -> bool:
-    """True only once every placeholder above has been replaced with real
-    copy AND the compliance footer has been turned on. Used to gate live
-    (non-test) sending in /followup/send — see main.py."""
+    """True once every placeholder above has been replaced with real copy
+    AND the compliance footer has been turned on — OR when
+    live_override_enabled() is True. Used to gate live (non-test) sending in
+    /followup/send — see main.py."""
+    if live_override_enabled():
+        return True
     return (
         INCLUDE_COMPLIANCE_FOOTER
         and MAILING_ADDRESS_PLACEHOLDER != _DEFAULT_MAILING_ADDRESS_PLACEHOLDER
@@ -83,22 +97,37 @@ def signature_html() -> str:
     )
 
 
+# Minimal one-line opt-out, used whenever the full compliance footer (the
+# unsubscribe line plus the real mailing address) isn't both on AND ready —
+# so every email carries at least this, and the address placeholder can
+# never leak into a live send via the FOLLOWUP_ALLOW_LIVE_WITHOUT_ADDRESS
+# override (see live_override_enabled()).
+OPT_OUT_LINE = "If you'd rather not receive emails from us, just reply and we'll take you off our list."
+
+
+def _mailing_address_is_real() -> bool:
+    return MAILING_ADDRESS_PLACEHOLDER != _DEFAULT_MAILING_ADDRESS_PLACEHOLDER
+
+
 def compliance_footer_text() -> str:
-    """Plain-text unsubscribe + mailing-address footer, or '' while
-    INCLUDE_COMPLIANCE_FOOTER is off. Shared by the follow-up template and
-    the custom email (see custom_email.py)."""
-    if not INCLUDE_COMPLIANCE_FOOTER:
-        return ""
-    return f"\n\n{UNSUBSCRIBE_LINE}\n{MAILING_ADDRESS_PLACEHOLDER}"
+    """Plain-text footer, appended at the end after the signature. Uses the
+    full unsubscribe + mailing-address footer only when INCLUDE_COMPLIANCE_FOOTER
+    is on AND a real address has replaced the placeholder; otherwise falls
+    back to the minimal OPT_OUT_LINE so the placeholder text can never appear
+    in a rendered email (e.g. during a live send via the no-address
+    override). Shared by the follow-up template and the custom email (see
+    custom_email.py)."""
+    if INCLUDE_COMPLIANCE_FOOTER and _mailing_address_is_real():
+        return f"\n\n{UNSUBSCRIBE_LINE}\n{MAILING_ADDRESS_PLACEHOLDER}"
+    return f"\n\n{OPT_OUT_LINE}"
 
 
 def compliance_footer_html() -> str:
-    """HTML unsubscribe + mailing-address footer, or '' while
-    INCLUDE_COMPLIANCE_FOOTER is off. Shared by the follow-up template and
-    the custom email (see custom_email.py)."""
-    if not INCLUDE_COMPLIANCE_FOOTER:
-        return ""
-    return f"<p>{_html.escape(UNSUBSCRIBE_LINE)}<br>{_html.escape(MAILING_ADDRESS_PLACEHOLDER)}</p>"
+    """HTML footer — same rule as compliance_footer_text(). Shared by the
+    follow-up template and the custom email (see custom_email.py)."""
+    if INCLUDE_COMPLIANCE_FOOTER and _mailing_address_is_real():
+        return f"<p>{_html.escape(UNSUBSCRIBE_LINE)}<br>{_html.escape(MAILING_ADDRESS_PLACEHOLDER)}</p>"
+    return f"<p>{_html.escape(OPT_OUT_LINE)}</p>"
 
 # Name-based "looks like a business, not a person" detector for {first_name}.
 _BUSINESS_WORDS = {
