@@ -4,10 +4,8 @@ const links = [
   { to: '/', label: 'Dashboard' },
   { to: '/leads', label: 'Leads' },
   { to: '/contacts', label: 'Contacts' },
-  { to: '/campaigns', label: 'Campaigns' },
-  { to: '/customers', label: 'Customers' },
-  { to: '/customers/followup-drafts', label: 'Follow-up Drafts (dev)' },
-  { to: '/customers/custom-email', label: 'Custom Email (dev)' },
+  { to: '/customers/followup-drafts', label: 'Follow-up Drafts' },
+  { to: '/customers/custom-email', label: 'Custom Email' },
   { to: '/timesheet', label: 'Timesheet' },
 ]
 
@@ -22,7 +20,7 @@ export default function Sidebar() {
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end
             className={({ isActive }) =>
               `px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 isActive

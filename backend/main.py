@@ -1222,7 +1222,6 @@ def custom_email_generate(req: CustomEmailGenerateRequest):
 _GEOCODING_URL      = "https://maps.googleapis.com/maps/api/geocode/json"
 _SOLAR_URL          = "https://solar.googleapis.com/v1/buildingInsights:findClosest"
 _PLACES_FIND_URL    = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
-_PLACES_NEARBY_URL  = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
 _PLACES_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
 _PLACES_TEXT_URL    = "https://maps.googleapis.com/maps/api/place/textsearch/json"
 
