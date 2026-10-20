@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import base64
+import html
 import io
 import json
 import os
 import re
 import secrets
+import smtplib
 import struct
+import time as _time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from zoneinfo import ZoneInfo
 
 _TZ = ZoneInfo("America/Los_Angeles")
@@ -27,6 +32,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from pyproj import Transformer
 from pydantic import BaseModel
+
+from followup_templates import (
+    CATEGORIES as _FOLLOWUP_CATEGORIES,
+    render_followup_email as _render_followup_email,
+    is_live_ready as _followup_is_live_ready,
+    _first_name as _followup_first_name,
+)
+import custom_email as _ce
 
 load_dotenv()
 
@@ -115,13 +128,17 @@ def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _parse_file(file: UploadFile) -> pd.DataFrame:
+    # dtype=str: every caller immediately .astype(str)s the result anyway, but
+    # without this, pandas' own type inference can silently strip leading
+    # zeros from a purely-numeric column (e.g. a zip code "08540" -> 8540)
+    # before that .astype(str) ever runs — too late to recover the original.
     content = file.file.read()
     filename = (file.filename or "").lower()
     try:
         if filename.endswith(".xlsx"):
-            return pd.read_excel(io.BytesIO(content), engine="openpyxl")
+            return pd.read_excel(io.BytesIO(content), engine="openpyxl", dtype=str)
         elif filename.endswith(".csv"):
-            return pd.read_csv(io.StringIO(content.decode("utf-8", errors="replace")))
+            return pd.read_csv(io.StringIO(content.decode("utf-8", errors="replace")), dtype=str)
         else:
             raise HTTPException(status_code=400, detail="Only .csv and .xlsx files are supported.")
     except HTTPException:
@@ -327,6 +344,828 @@ def send_email(req: SendRequest):
     _save_campaigns(campaigns)
 
     return {"status": "sent", "sent_to": TEST_RECIPIENT}
+
+
+# ── Customers Follow-Up (draft only — no sending) ────────────────────────────
+
+class FollowupDraftRequest(BaseModel):
+    name: str = ""
+    last_service: str = ""         # one of _FOLLOWUP_CATEGORIES
+    last_service_date: str = ""    # any date-ish string; only the year is used
+    has_reroofing: bool = False
+    reroofing_last_date: str = ""  # any date-ish string; only the year is used
+    business_signal: bool = False
+    template: str = ""             # "with_reroofing" | "without_reroofing"; blank -> default
+
+
+@app.post("/followup/draft")
+def followup_draft(req: FollowupDraftRequest):
+    category = req.last_service.strip()
+    if category not in _FOLLOWUP_CATEGORIES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"last_service must be one of: {', '.join(_FOLLOWUP_CATEGORIES)}",
+        )
+
+    return _render_followup_email(
+        name=req.name,
+        last_service=category,
+        last_service_date=req.last_service_date,
+        has_reroofing=req.has_reroofing,
+        reroofing_last_date=req.reroofing_last_date,
+        business_signal=req.business_signal,
+        template=req.template,
+    )
+
+
+_FOLLOWUP_COLUMN_ALIASES = {
+    "name":              ["name"],
+    "email":             ["email", "email address"],
+    "address":           ["address"],
+    "property_type":     ["property type"],
+    "last_service":      ["last service (of 3)", "last service"],
+    "last_service_date": ["last service date"],
+}
+
+_FOLLOWUP_EMAIL_RE = re.compile(r"^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$")
+
+
+def _years_ago(n: int) -> date:
+    today = date.today()
+    try:
+        return today.replace(year=today.year - n)
+    except ValueError:
+        # today is Feb 29 and the target year has no Feb 29
+        return today.replace(month=2, day=28, year=today.year - n)
+
+
+def _is_master_list(df: pd.DataFrame) -> bool:
+    """Master Contact List format: has a comma-separated date column per
+    tracked service, instead of a single last_service/last_service_date pair."""
+    lowered = {col.strip().lower() for col in df.columns}
+    return all(cat.lower() in lowered for cat in _FOLLOWUP_CATEGORIES)
+
+
+def _reroofing_dates(row: "pd.Series", reroofing_col) -> list[date]:
+    """Every parseable date in the row's Re-Roofing column, regardless of age."""
+    if reroofing_col is None or pd.isna(row[reroofing_col]) or not str(row[reroofing_col]).strip():
+        return []
+    dates = []
+    for part in str(row[reroofing_col]).split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            dates.append(datetime.strptime(part, "%m/%d/%Y").date())
+        except ValueError:
+            continue
+    return dates
+
+
+def _parse_master_list(df: pd.DataFrame) -> dict:
+    """Wide Master Contact List format: each of the three tracked services has
+    its own column of comma-separated MM/DD/YYYY dates (oldest to newest), or
+    blank. Keeps only rows with a single valid email and at least one date, in
+    any of the three tracked services, within the last 5 years."""
+    lowered = {col.strip().lower(): col for col in df.columns}
+
+    def col(name):
+        return lowered.get(name.lower())
+
+    name_col     = col("name")
+    email_col    = col("email")
+    address_col  = col("address")
+    prop_col     = col("property type (rlis)")
+    biz_col      = col("business name signal")
+    service_cols = {cat: col(cat) for cat in _FOLLOWUP_CATEGORIES}
+    reroofing_col = service_cols.get("Re-Roofing")
+
+    cutoff = _years_ago(5)
+    total_rows_in_file = len(df)
+    kept_rows = []
+    eligible_emails = set()
+
+    for _, row in df.iterrows():
+        email = "" if email_col is None or pd.isna(row[email_col]) else str(row[email_col]).strip()
+        if not _FOLLOWUP_EMAIL_RE.match(email):
+            continue
+
+        best_service, best_date = None, None
+        for cat, c in service_cols.items():
+            if c is None or pd.isna(row[c]) or not str(row[c]).strip():
+                continue
+            for part in str(row[c]).split(","):
+                part = part.strip()
+                if not part:
+                    continue
+                try:
+                    d = datetime.strptime(part, "%m/%d/%Y").date()
+                except ValueError:
+                    continue
+                if d < cutoff:
+                    continue
+                if best_date is None or d > best_date:
+                    best_service, best_date = cat, d
+
+        if best_date is None:
+            continue
+
+        # has_reroofing / reroofing_last_date: ANY Re-Roofing date at any time,
+        # not limited to the 5-year eligibility window above.
+        all_reroofing = _reroofing_dates(row, reroofing_col)
+        has_reroofing = bool(all_reroofing)
+        reroofing_last_date = max(all_reroofing).isoformat() if all_reroofing else ""
+
+        biz_val = "" if biz_col is None or pd.isna(row[biz_col]) else str(row[biz_col]).strip().lower()
+        business_signal = biz_val == "yes"
+
+        kept_rows.append({
+            "name":                 "" if name_col is None or pd.isna(row[name_col]) else str(row[name_col]).strip(),
+            "email":                email,
+            "has_reroofing":        has_reroofing,
+            "reroofing_last_date":  reroofing_last_date,
+            "business_signal":      business_signal,
+            "address":           "" if address_col is None or pd.isna(row[address_col]) else str(row[address_col]).strip(),
+            "property_type":     "" if prop_col is None or pd.isna(row[prop_col]) else str(row[prop_col]).strip(),
+            "last_service":      best_service,
+            "last_service_date": best_date.isoformat(),
+        })
+        eligible_emails.add(email.lower())
+
+    return {
+        "rows":                   kept_rows[:500],
+        "total":                  total_rows_in_file,
+        "total_rows_in_file":     total_rows_in_file,
+        "eligible_rows":          len(kept_rows),
+        "unique_eligible_emails": len(eligible_emails),
+    }
+
+
+def _build_followup_preview(df: pd.DataFrame) -> dict:
+    """Shared eligibility/shaping logic for both /followup/preview (fresh
+    upload) and /followup/preview-saved (previously saved to the Customers
+    Sheet) — same rules, same response shape, regardless of where the rows
+    came from. Accepts either the flat 6-column format or the wide Master
+    Contact List format (detected via _is_master_list)."""
+    if _is_master_list(df):
+        return _parse_master_list(df)
+
+    rename_map = {}
+    lowered = {col.strip().lower(): col for col in df.columns}
+    for field, aliases in _FOLLOWUP_COLUMN_ALIASES.items():
+        for alias in aliases:
+            if alias in lowered:
+                rename_map[lowered[alias]] = field
+                break
+    df = df.rename(columns=rename_map)
+
+    schema_fields = list(_FOLLOWUP_COLUMN_ALIASES.keys())
+    for field in schema_fields:
+        if field not in df.columns:
+            df[field] = ""
+
+    df = df[schema_fields].copy()
+    df = df.where(pd.notna(df), "")
+    df = df.astype(str)
+
+    # Flat format has no separate Re-Roofing date column — derive from last_service.
+    df["has_reroofing"] = df["last_service"] == "Re-Roofing"
+    df["reroofing_last_date"] = df["last_service_date"].where(df["has_reroofing"], "")
+    # Flat format has no Business Name Signal column.
+    df["business_signal"] = False
+
+    rows = df.head(500).to_dict(orient="records")
+    return {"rows": rows, "total": len(df)}
+
+
+@app.post("/followup/preview")
+def followup_preview(file: UploadFile):
+    """Parse an uploaded customer list for the Follow-up Drafts page.
+
+    Accepts either the flat 6-column format or the wide Master Contact List
+    format (detected via _is_master_list) — reads only the first sheet in an
+    .xlsx, so a "Notes" sheet elsewhere in the workbook is never touched.
+
+    Read-only: never written to disk, contacts.json, or the Google Sheet —
+    the parsed rows only ever live in the response and the browser's memory.
+    """
+    df = _parse_file(file)
+    return _build_followup_preview(df)
+
+
+# ── Customers Sheet (persisted upload, separate from the time clock Sheet) ──
+# CUSTOMERS_SHEET_ID / CUSTOMERS_SHEET_LABEL are intentionally separate from
+# GOOGLE_SHEET_ID (the time clock's Sheet) so dev and production can point at
+# different spreadsheets independently. No fallback to GOOGLE_SHEET_ID or any
+# literal ID — if CUSTOMERS_SHEET_ID is unset, these endpoints refuse outright.
+# Reuses the same service-account credential-loading approach as the time
+# clock's _get_sheet() (same env vars, same scopes) without modifying it.
+
+_customers_gs_client = None
+
+
+def _get_customers_sheet():
+    sheet_id = os.getenv("CUSTOMERS_SHEET_ID")
+    if not sheet_id:
+        raise HTTPException(status_code=500, detail="CUSTOMERS_SHEET_ID is not configured.")
+
+    global _customers_gs_client
+    if _customers_gs_client is None:
+        try:
+            creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
+            if creds_json:
+                info  = json.loads(creds_json)
+                creds = _SACredentials.from_service_account_info(info, scopes=_SCOPES)
+            else:
+                creds = _SACredentials.from_service_account_file(str(_CREDS_FILE), scopes=_SCOPES)
+            _customers_gs_client = gspread.authorize(creds)
+        except Exception:
+            raise HTTPException(
+                status_code=502,
+                detail="Could not reach the customer Sheet. Check sharing with the service account.",
+            )
+
+    try:
+        return _customers_gs_client.open_by_key(sheet_id)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the customer Sheet. Check sharing with the service account.",
+        )
+
+
+def _get_or_create_ws(sheet, title: str, rows: int, cols: int):
+    try:
+        return sheet.worksheet(title)
+    except gspread.WorksheetNotFound:
+        try:
+            return sheet.add_worksheet(title=title, rows=rows, cols=cols)
+        except Exception:
+            raise HTTPException(
+                status_code=502,
+                detail="Could not reach the customer Sheet. Check sharing with the service account.",
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the customer Sheet. Check sharing with the service account.",
+        )
+
+
+def _customers_ws():
+    return _get_or_create_ws(_get_customers_sheet(), "Customers", rows=1000, cols=26)
+
+
+def _customers_meta_ws():
+    return _get_or_create_ws(_get_customers_sheet(), "Meta", rows=10, cols=5)
+
+
+def _get_ws_if_exists(sheet, title: str):
+    """Read-only lookup — never creates the tab. Returns None if it doesn't
+    exist yet. Only /customers/save is allowed to create tabs."""
+    try:
+        return sheet.worksheet(title)
+    except gspread.WorksheetNotFound:
+        return None
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the customer Sheet. Check sharing with the service account.",
+        )
+
+
+def _customers_ws_readonly():
+    return _get_ws_if_exists(_get_customers_sheet(), "Customers")
+
+
+def _customers_meta_ws_readonly():
+    return _get_ws_if_exists(_get_customers_sheet(), "Meta")
+
+
+@app.post("/customers/save")
+def customers_save(file: UploadFile):
+    """Save an uploaded Master List to the Customers Sheet, replacing whatever
+    was there before. Logs row counts only — never names, emails, or phones."""
+    df = _parse_file(file)
+    label = (os.getenv("CUSTOMERS_SHEET_LABEL") or "unlabeled").strip() or "unlabeled"
+
+    df_str = df.where(pd.notna(df), "").astype(str)
+    header = [str(c) for c in df_str.columns]
+    data_rows = df_str.values.tolist()
+
+    ws = _customers_ws()
+    try:
+        # Resize to exactly the new data's shape first — nothing stale can
+        # remain beyond it, and (unlike clear()) a failed update() doesn't
+        # leave the tab blank in between: the old data is still in place
+        # until the update actually succeeds.
+        ws.resize(rows=len(data_rows) + 1, cols=max(len(header), 1))
+        ws.update([header] + data_rows, value_input_option="RAW")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the customer Sheet. Check sharing with the service account.",
+        )
+
+    saved_rows = len(data_rows)
+    imported_at = datetime.now(_TZ).isoformat()
+
+    meta_ws = _customers_meta_ws()
+    try:
+        meta_ws.resize(rows=2, cols=3)
+        meta_ws.update(
+            [
+                ["imported_at", "row_count", "source_filename"],
+                [imported_at, str(saved_rows), file.filename or ""],
+            ],
+            value_input_option="RAW",
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the customer Sheet. Check sharing with the service account.",
+        )
+
+    print(f"[customers/save] saved {saved_rows} rows (label={label!r})", flush=True)
+    return {"saved_rows": saved_rows, "label": label}
+
+
+@app.get("/customers/status")
+def customers_status():
+    """Read-only: never creates the Customers or Meta tab. No customer data
+    in the response — counts and metadata only."""
+    label = (os.getenv("CUSTOMERS_SHEET_LABEL") or "unlabeled").strip() or "unlabeled"
+
+    ws = _customers_ws_readonly()
+    if ws is None:
+        return {"label": label, "saved_rows": 0}
+
+    try:
+        values = ws.get_all_values()
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the customer Sheet. Check sharing with the service account.",
+        )
+
+    saved_rows = max(len(values) - 1, 0) if values else 0
+    if saved_rows == 0:
+        return {"label": label, "saved_rows": 0}
+
+    imported_at = None
+    meta_ws = _customers_meta_ws_readonly()
+    if meta_ws is not None:
+        try:
+            meta_values = meta_ws.get_all_values()
+        except Exception:
+            raise HTTPException(
+                status_code=502,
+                detail="Could not reach the customer Sheet. Check sharing with the service account.",
+            )
+        if len(meta_values) >= 2:
+            meta_header, meta_row = meta_values[0], meta_values[1]
+            meta = dict(zip(meta_header, meta_row))
+            imported_at = meta.get("imported_at") or None
+
+    return {"label": label, "saved_rows": saved_rows, "imported_at": imported_at}
+
+
+@app.get("/followup/preview-saved")
+def followup_preview_saved():
+    """Same response shape as /followup/preview, sourced from the Customers
+    Sheet instead of a fresh upload — same eligibility rules either way.
+    Read-only: never creates the Customers tab (only /customers/save does)."""
+    ws = _customers_ws_readonly()
+    if ws is None:
+        raise HTTPException(status_code=404, detail="No saved customer list found. Upload and save one first.")
+
+    try:
+        values = ws.get_all_values()
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the customer Sheet. Check sharing with the service account.",
+        )
+
+    if not values or len(values) < 2:
+        raise HTTPException(status_code=404, detail="No saved customer list found. Upload and save one first.")
+
+    header, *data_rows = values
+    df = pd.DataFrame(data_rows, columns=header)
+    return _build_followup_preview(df)
+
+
+_FOLLOWUP_SEND_CAP = 50
+_FOLLOWUP_TEMPLATES = ("with_reroofing", "without_reroofing")
+
+
+class FollowupSendItem(BaseModel):
+    name: str = ""
+    email: str = ""
+    last_service: str = ""
+    last_service_date: str = ""
+    has_reroofing: bool = False
+    reroofing_last_date: str = ""
+    business_signal: bool = False
+    template: str = ""  # "with_reroofing" | "without_reroofing"; blank -> default
+
+
+class FollowupSendRequest(BaseModel):
+    items: list[FollowupSendItem] = []
+
+
+def _strip_crlf(s: str) -> str:
+    """Remove CR/LF so customer-supplied text can't inject extra email headers."""
+    return (s or "").replace("\r", "").replace("\n", "")
+
+
+@app.get("/followup/send-mode")
+def followup_send_mode():
+    """Lets the frontend show accurate confirm-dialog wording without
+    hardcoding the test recipient. Never returns SMTP credentials."""
+    send_mode = (os.getenv("FOLLOWUP_SEND_MODE") or "test").strip().lower()
+    result = {"mode": send_mode}
+    if send_mode == "test":
+        result["test_recipient"] = os.getenv("FOLLOWUP_TEST_RECIPIENT", "").strip()
+    return result
+
+
+def _send_rendered_emails(rendered_items: list[dict], send_mode: str) -> dict:
+    """Shared SMTP send loop for /followup/send and /custom-email/send.
+
+    Each item in rendered_items is already fully rendered for one recipient:
+    {"display_name", "email", "subject", "body_text", "body_html"} — this
+    function only handles the SMTP/test-mode mechanics, identical for both
+    callers: one connection (login once, reused for every message), the
+    test-mode recipient lock + TEST banner + "[TEST] <name> - " subject
+    prefix, CRLF-stripped subject, and a 2s pause between sends. Returns
+    {"sent": [...], "failed": [...]} — duplicate/invalid-email skipping and
+    the request-level cap are each caller's responsibility, before this runs.
+    """
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = os.getenv("SMTP_PORT")
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_APP_PASSWORD")
+    if not all([smtp_host, smtp_port, smtp_user, smtp_pass]):
+        raise HTTPException(status_code=500, detail="SMTP settings are not fully configured.")
+    try:
+        smtp_port = int(smtp_port)
+    except ValueError:
+        raise HTTPException(status_code=500, detail="SMTP_PORT must be a number.")
+
+    test_recipient = os.getenv("FOLLOWUP_TEST_RECIPIENT", "").strip()
+    if send_mode == "test" and not test_recipient:
+        raise HTTPException(status_code=500, detail="FOLLOWUP_TEST_RECIPIENT is not configured.")
+
+    # One connection, login once, for the whole request.
+    server = None
+    try:
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+    except Exception:
+        if server is not None:
+            try:
+                server.close()
+            except Exception:
+                pass
+        raise HTTPException(status_code=502, detail="SMTP login failed. Check the sending account settings.")
+
+    sent: list[str] = []
+    failed: list[dict] = []
+
+    try:
+        for item in rendered_items:
+            display_name = item["display_name"]
+            email        = item["email"]
+            subject      = item["subject"]
+            body_text    = item["body_text"]
+            body_html    = item["body_html"]
+
+            if send_mode == "test":
+                banner = f"TEST MODE: this would have gone to {display_name} <{email}>"
+                body_text = f"{banner}\n\n{body_text}"
+                body_html = f"<p><strong>{html.escape(banner)}</strong></p>\n{body_html}"
+                subject   = f"[TEST] {display_name} - {subject}"
+                to_addr   = test_recipient
+            else:
+                to_addr = email
+
+            subject = _strip_crlf(subject)
+
+            try:
+                msg = MIMEMultipart("alternative")
+                msg["Subject"]  = subject
+                msg["From"]     = f"Willamette Power Roofing <{smtp_user}>"
+                msg["To"]       = to_addr
+                msg["Reply-To"] = smtp_user
+                msg.attach(MIMEText(body_text, "plain"))
+                msg.attach(MIMEText(body_html, "html"))
+
+                server.sendmail(smtp_user, [to_addr], msg.as_string())
+
+                sent.append(display_name)
+                print(f"[email send] sent to {display_name!r} (mode={send_mode})", flush=True)
+            except Exception as exc:
+                failed.append({"name": display_name, "error": "Could not send email."})
+                print(f"[email send] failed for {display_name!r}: {type(exc).__name__}", flush=True)
+
+            _time.sleep(2)
+    finally:
+        try:
+            server.quit()
+        except Exception:
+            pass
+
+    return {"sent": sent, "failed": failed}
+
+
+@app.post("/followup/send")
+def followup_send(req: FollowupSendRequest):
+    """Send the deterministic follow-up template to a batch of customers.
+
+    DEV SAFETY: with FOLLOWUP_SEND_MODE=test (the default), every email goes
+    only to FOLLOWUP_TEST_RECIPIENT — the `email` on each item is never used
+    as the actual send target in test mode. Any other mode is refused (403)
+    unless the template placeholders have all been replaced with real copy
+    (see followup_templates.is_live_ready) — today they have not, so live
+    sending is not possible regardless of FOLLOWUP_SEND_MODE.
+    """
+    if len(req.items) > _FOLLOWUP_SEND_CAP:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot send more than {_FOLLOWUP_SEND_CAP} emails in one request.",
+        )
+
+    send_mode = (os.getenv("FOLLOWUP_SEND_MODE") or "test").strip().lower()
+
+    if send_mode != "test" and not _followup_is_live_ready():
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Live sending is disabled: the compliance footer, mailing address, "
+                "subject, and feedback link must all be set to real values first."
+            ),
+        )
+
+    skipped: list[dict] = []
+    seen_emails: set[str] = set()
+    rendered_items: list[dict] = []
+
+    for item in req.items:
+        display_name = _strip_crlf(item.name).strip() or "(no name)"
+        email = item.email.strip()
+
+        if not _FOLLOWUP_EMAIL_RE.match(email):
+            skipped.append({"name": display_name, "reason": "invalid or missing email"})
+            continue
+
+        email_key = email.lower()
+        if email_key in seen_emails:
+            skipped.append({"name": display_name, "reason": "duplicate email in this request"})
+            continue
+        seen_emails.add(email_key)
+
+        template = item.template if item.template in _FOLLOWUP_TEMPLATES else None
+        rendered = _render_followup_email(
+            name=item.name,
+            last_service=item.last_service,
+            last_service_date=item.last_service_date,
+            has_reroofing=item.has_reroofing,
+            reroofing_last_date=item.reroofing_last_date,
+            business_signal=item.business_signal,
+            template=template,
+        )
+        rendered_items.append({
+            "display_name": display_name,
+            "email": email,
+            "subject": rendered["subject"],
+            "body_text": rendered["body_text"],
+            "body_html": rendered["body_html"],
+        })
+
+    result = _send_rendered_emails(rendered_items, send_mode)
+    return {"mode": send_mode, "sent": result["sent"], "skipped": skipped, "failed": result["failed"]}
+
+
+# ── Custom Email (owner-written or AI-drafted, to an uploaded list) ─────────
+
+_CUSTOM_EMAIL_NAME_ALIASES = ["name", "full name", "customer name"]
+_CUSTOM_EMAIL_EMAIL_ALIASES = ["email", "e-mail", "email address"]
+_CUSTOM_EMAIL_SUBJECT_MAX = 150
+_CUSTOM_EMAIL_BODY_MAX = 5000
+
+
+@app.post("/custom-email/preview-list")
+def custom_email_preview_list(file: UploadFile):
+    """Parse an uploaded customer list for the Custom Email page (first sheet
+    only, read with dtype=str). Detects Name/Email columns case-insensitively.
+    Read-only: nothing is written to disk, Sheets, or logs."""
+    df = _parse_file(file)
+    lowered = {col.strip().lower(): col for col in df.columns}
+
+    name_col = next((lowered[a] for a in _CUSTOM_EMAIL_NAME_ALIASES if a in lowered), None)
+    email_col = next((lowered[a] for a in _CUSTOM_EMAIL_EMAIL_ALIASES if a in lowered), None)
+    if email_col is None:
+        raise HTTPException(
+            status_code=400,
+            detail="No email column found. Expected a column named Email, E-mail, or Email Address.",
+        )
+
+    seen_emails: set[str] = set()
+    rows = []
+    valid = duplicates = invalid = 0
+
+    for _, row in df.iterrows():
+        raw_name = "" if name_col is None or pd.isna(row[name_col]) else str(row[name_col]).strip()
+        raw_email = "" if pd.isna(row[email_col]) else str(row[email_col]).strip()
+
+        is_valid_email = bool(_FOLLOWUP_EMAIL_RE.match(raw_email))
+        email_key = raw_email.lower()
+        is_duplicate = is_valid_email and email_key in seen_emails
+        if is_valid_email and not is_duplicate:
+            seen_emails.add(email_key)
+
+        if not is_valid_email:
+            invalid += 1
+        elif is_duplicate:
+            duplicates += 1
+        else:
+            valid += 1
+
+        rows.append({
+            "name": raw_name,
+            "email": raw_email,
+            "first_name": _followup_first_name(raw_name),
+            "email_valid": is_valid_email,
+            "duplicate": is_duplicate,
+        })
+
+    return {"rows": rows, "total": len(df), "valid": valid, "duplicates": duplicates, "invalid": invalid}
+
+
+class CustomEmailRenderRequest(BaseModel):
+    subject: str = ""
+    body: str = ""
+    name: str = ""
+
+
+@app.post("/custom-email/render")
+def custom_email_render(req: CustomEmailRenderRequest):
+    """Render the owner's subject/body for one recipient, with placeholders
+    substituted and the standard signature/footer appended. Pure — no SMTP,
+    no file I/O."""
+    if len(req.subject) > _CUSTOM_EMAIL_SUBJECT_MAX:
+        raise HTTPException(status_code=400, detail=f"Subject must be {_CUSTOM_EMAIL_SUBJECT_MAX} characters or fewer.")
+    if len(req.body) > _CUSTOM_EMAIL_BODY_MAX:
+        raise HTTPException(status_code=400, detail=f"Message must be {_CUSTOM_EMAIL_BODY_MAX} characters or fewer.")
+
+    return _ce.render_custom_email(subject=req.subject, body=req.body, name=req.name)
+
+
+class CustomEmailSendItem(BaseModel):
+    name: str = ""
+    email: str = ""
+
+
+class CustomEmailSendRequest(BaseModel):
+    subject: str = ""
+    body: str = ""
+    items: list[CustomEmailSendItem] = []
+
+
+@app.post("/custom-email/send")
+def custom_email_send(req: CustomEmailSendRequest):
+    """Send the owner's custom email to a batch of recipients. Rejects the
+    whole request (400, nothing sent) for an empty subject/body or unknown
+    placeholders — same checks as /custom-email/render, enforced up front
+    instead of being merely reported as warnings. Same test/live-mode
+    safeguards as /followup/send, via the shared _send_rendered_emails."""
+    if len(req.items) > _FOLLOWUP_SEND_CAP:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot send more than {_FOLLOWUP_SEND_CAP} emails in one request.",
+        )
+
+    subject = req.subject
+    body = req.body
+    if len(subject) > _CUSTOM_EMAIL_SUBJECT_MAX:
+        raise HTTPException(status_code=400, detail=f"Subject must be {_CUSTOM_EMAIL_SUBJECT_MAX} characters or fewer.")
+    if len(body) > _CUSTOM_EMAIL_BODY_MAX:
+        raise HTTPException(status_code=400, detail=f"Message must be {_CUSTOM_EMAIL_BODY_MAX} characters or fewer.")
+    if not subject.strip():
+        raise HTTPException(status_code=400, detail="Subject is required.")
+    if not body.strip():
+        raise HTTPException(status_code=400, detail="Message is required.")
+
+    unknown = _ce._dedupe(_ce.unknown_placeholders(subject) + _ce.unknown_placeholders(body))
+    if unknown:
+        raise HTTPException(status_code=400, detail=f"Unknown placeholder(s): {', '.join(unknown)}")
+
+    send_mode = (os.getenv("FOLLOWUP_SEND_MODE") or "test").strip().lower()
+    if send_mode != "test" and not _ce.custom_email_live_ready():
+        raise HTTPException(
+            status_code=403,
+            detail="Live sending is disabled: the compliance footer and a real mailing address must be set first.",
+        )
+
+    skipped: list[dict] = []
+    seen_emails: set[str] = set()
+    rendered_items: list[dict] = []
+
+    for item in req.items:
+        display_name = _strip_crlf(item.name).strip() or "(no name)"
+        email = item.email.strip()
+
+        if not _FOLLOWUP_EMAIL_RE.match(email):
+            skipped.append({"name": display_name, "reason": "invalid or missing email"})
+            continue
+
+        email_key = email.lower()
+        if email_key in seen_emails:
+            skipped.append({"name": display_name, "reason": "duplicate email in this request"})
+            continue
+        seen_emails.add(email_key)
+
+        rendered = _ce.render_custom_email(subject=subject, body=body, name=item.name)
+        rendered_items.append({
+            "display_name": display_name,
+            "email": email,
+            "subject": rendered["subject"],
+            "body_text": rendered["body_text"],
+            "body_html": rendered["body_html"],
+        })
+
+    result = _send_rendered_emails(rendered_items, send_mode)
+    return {"mode": send_mode, "sent": result["sent"], "skipped": skipped, "failed": result["failed"]}
+
+
+_LAST_GENERATE_AT = {"ts": 0.0}
+_GENERATE_COOLDOWN_SECONDS = 3.0
+_GENERATE_MODEL = "claude-opus-4-8"
+
+
+class CustomEmailGenerateRequest(BaseModel):
+    instruction: str = ""
+    tone: str = ""
+
+
+@app.post("/custom-email/generate")
+def custom_email_generate(req: CustomEmailGenerateRequest):
+    """AI-draft a subject/body from the owner's instruction. PRIVACY: the
+    model call contains only the instruction, the tone, and fixed business
+    context/rules — never any customer name, email, or uploaded list data.
+    Logs only that a generation happened and its length, never the
+    instruction text."""
+    now = _time.time()
+    if now - _LAST_GENERATE_AT["ts"] < _GENERATE_COOLDOWN_SECONDS:
+        raise HTTPException(status_code=429, detail="Please wait a moment before generating again.")
+
+    instruction = (req.instruction or "").strip()
+    if not instruction or len(instruction) > 1000:
+        raise HTTPException(status_code=400, detail="instruction must be between 1 and 1000 characters.")
+
+    tone = _ce.normalize_tone(req.tone)
+    word_limit = 70 if tone == "short" else 120
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="AI drafting is not configured.")
+
+    _LAST_GENERATE_AT["ts"] = now
+
+    system_prompt = _ce.build_generate_system_prompt(tone, word_limit)
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model=_GENERATE_MODEL,
+            max_tokens=400,
+            system=system_prompt,
+            messages=[{"role": "user", "content": instruction}],
+            timeout=30,
+        )
+        parsed = _ce.parse_generate_reply(response.content[0].text)
+    except Exception:
+        raise HTTPException(status_code=502, detail="Could not generate a draft. Please try again.")
+
+    subject = _strip_crlf(parsed["subject"]).strip()
+    body = parsed["body"]
+
+    unknown = _ce._dedupe(_ce.unknown_placeholders(subject) + _ce.unknown_placeholders(body))
+    warnings = [f"Unknown placeholder(s): {', '.join(unknown)}"] if unknown else []
+
+    print(f"[custom-email/generate] generated draft (tone={tone}, body_chars={len(body)})", flush=True)
+    return {"subject": subject, "body": body, "warnings": warnings}
 
 
 # ── Lead Generation — Oregon Metro RLIS ──────────────────────────────────────

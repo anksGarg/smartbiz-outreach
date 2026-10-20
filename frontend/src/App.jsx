@@ -6,6 +6,8 @@ import Leads from './pages/Leads'
 import Campaigns from './pages/Campaigns'
 import Customers from './pages/Customers'
 import Timesheet from './pages/Timesheet'
+import FollowupDrafts from './pages/FollowupDrafts'
+import CustomEmail from './pages/CustomEmail'
 import './index.css'
 
 export default function App() {
@@ -20,6 +22,8 @@ export default function App() {
             <Route path="/contacts" element={<Contacts />} />
             <Route path="/campaigns" element={<Campaigns />} />
             <Route path="/customers" element={<Customers />} />
+            <Route path="/customers/followup-drafts" element={<FollowupDrafts />} />
+            <Route path="/customers/custom-email" element={<CustomEmail />} />
             <Route path="/timesheet" element={<Timesheet />} />
           </Routes>
         </main>
