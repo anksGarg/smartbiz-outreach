@@ -3,8 +3,6 @@ import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import Contacts from './pages/Contacts'
 import Leads from './pages/Leads'
-import Campaigns from './pages/Campaigns'
-import Customers from './pages/Customers'
 import Timesheet from './pages/Timesheet'
 import FollowupDrafts from './pages/FollowupDrafts'
 import CustomEmail from './pages/CustomEmail'
@@ -20,8 +18,6 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/leads" element={<Leads />} />
             <Route path="/contacts" element={<Contacts />} />
-            <Route path="/campaigns" element={<Campaigns />} />
-            <Route path="/customers" element={<Customers />} />
             <Route path="/customers/followup-drafts" element={<FollowupDrafts />} />
             <Route path="/customers/custom-email" element={<CustomEmail />} />
             <Route path="/timesheet" element={<Timesheet />} />

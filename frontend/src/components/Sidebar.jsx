@@ -4,8 +4,6 @@ const links = [
   { to: '/', label: 'Dashboard' },
   { to: '/leads', label: 'Leads' },
   { to: '/contacts', label: 'Contacts' },
-  { to: '/campaigns', label: 'Campaigns' },
-  { to: '/customers', label: 'Customers' },
   { to: '/customers/followup-drafts', label: 'Follow-up Drafts' },
   { to: '/customers/custom-email', label: 'Custom Email' },
   { to: '/timesheet', label: 'Timesheet' },
