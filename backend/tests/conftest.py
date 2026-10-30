@@ -28,6 +28,10 @@ import followup_templates as ft  # noqa: E402
 import main  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
+# Captured at import, before _isolate resets it per test — lets
+# test_review_link.py check the real shipped value.
+SHIPPED_FEEDBACK_URL = ft.FEEDBACK_URL
+
 TEST_RECIPIENT = "owner-inbox@example.test"
 SMTP_USER = "sender@example.test"
 SMTP_PASSWORD = "not-a-real-app-password"
@@ -105,7 +109,8 @@ def _isolate(monkeypatch):
     monkeypatch.setattr(main.anthropic, "Anthropic", _NoAnthropic)
     monkeypatch.setattr(main._time, "sleep", lambda seconds: None)
     monkeypatch.setitem(main._LAST_GENERATE_AT, "ts", 0.0)
-    # Template constants as shipped — individual tests override these.
+    # Placeholder baseline for the template constants (not the shipped
+    # FEEDBACK_URL — see SHIPPED_FEEDBACK_URL) — individual tests override these.
     monkeypatch.setattr(ft, "FEEDBACK_URL", ft._DEFAULT_FEEDBACK_URL)
     monkeypatch.setattr(ft, "INCLUDE_COMPLIANCE_FOOTER", False)
     monkeypatch.setattr(ft, "MAILING_ADDRESS_PLACEHOLDER", ft._DEFAULT_MAILING_ADDRESS_PLACEHOLDER)
