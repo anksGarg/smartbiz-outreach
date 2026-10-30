@@ -1,5 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { API_URL as API } from '../config'
+
+const FOLLOWUP_PLACEHOLDERS = [
+  { token: '{{first_name}}', note: null },
+  { token: '{{full_name}}', note: null },
+  { token: '{{service_phrase}}', note: '"gutter cleaning in 2024", or just "gutter cleaning" if no year — use this if unsure' },
+  { token: '{{service}}', note: 'can be empty for some customers' },
+  { token: '{{year}}', note: 'can be empty for some customers' },
+  { token: '{{reroofing_year}}', note: 'always re-roofing\'s own year, even on the with-re-roofing template; can be empty' },
+]
 
 const TIMEOUT_MSG = 'Something went wrong. Please try again.'
 const CATEGORIES = ['Re-Roofing', 'Gutter Cleaning', 'Pressure Washing']
@@ -31,6 +40,18 @@ function errMsg(e) {
 
 function defaultTemplate(row) {
   return row.has_reroofing ? 'with_reroofing' : 'without_reroofing'
+}
+
+// The customer fields /followup/draft and /followup/send both need.
+function customerFollowupFields(customer) {
+  return {
+    name: customer.name,
+    last_service: customer.last_service,
+    last_service_date: customer.last_service_date,
+    has_reroofing: customer.has_reroofing,
+    reroofing_last_date: customer.reroofing_last_date,
+    business_signal: customer.business_signal,
+  }
 }
 
 // Splits items into fixed-size chunks, preserving order.
@@ -66,10 +87,32 @@ export default function FollowupDrafts() {
   const [uploadError, setUploadError] = useState(null)
   const [filterCategory, setFilterCategory] = useState('')
 
-  // Generated samples — { [slotKey]: {subject, body_text, body_html, customerName} }. Edits here are local only.
+  // Generated samples — { [slotKey]: {subject, template_subject, template_text, body_text, body_html, customerName} }.
   const [drafts, setDrafts] = useState({})
   const [draftErrors, setDraftErrors] = useState({})
   const [generating, setGenerating] = useState(false)
+
+  // The owner's current edited Subject / whole-body template per template —
+  // raw placeholder text, e.g. "...trusting us with your {{service_phrase}}..."
+  // — these are what actually get sent (see sendEmails()). Edits apply to
+  // EVERY customer who gets that template, not just the one being previewed.
+  // Lives only in this component's state — lost on refresh, never saved.
+  const [editedSubject, setEditedSubject] = useState({})
+  const [editedText, setEditedText] = useState({})
+  // The server's own defaults, captured once per slot (on first generate or
+  // "Reset to default"), so we can tell whether a slot is actually edited
+  // right now vs. still showing the untouched default.
+  const [defaultSubject, setDefaultSubject] = useState({})
+  const [defaultText, setDefaultText] = useState({})
+  // Which row (by _idx) is chosen in each slot's "Preview for" selector —
+  // falls back to the first matching candidate (see previewCandidates) when
+  // unset or no longer a valid candidate.
+  const [previewRowIdx, setPreviewRowIdx] = useState({})
+  const [resettingSlot, setResettingSlot] = useState(null)
+  // Which field (subject/text) last had focus per slot — placeholder insert
+  // buttons type into whichever one that is.
+  const [focusedField, setFocusedField] = useState({})
+  const fieldRefs = useRef({})
 
   // Per-row selection + template choice, keyed by row._idx. Template defaults
   // from has_reroofing but the owner can override it per customer.
@@ -144,6 +187,11 @@ export default function FollowupDrafts() {
       setUploadedFile(file)
       setDrafts({})
       setDraftErrors({})
+      setEditedSubject({})
+      setEditedText({})
+      setDefaultSubject({})
+      setDefaultText({})
+      setPreviewRowIdx({})
       setSelected(new Set())
       setRowTemplates({})
       setSendResult(null)
@@ -173,6 +221,11 @@ export default function FollowupDrafts() {
       setUploadedFile(null)
       setDrafts({})
       setDraftErrors({})
+      setEditedSubject({})
+      setEditedText({})
+      setDefaultSubject({})
+      setDefaultText({})
+      setPreviewRowIdx({})
       setSelected(new Set())
       setRowTemplates({})
       setSendResult(null)
@@ -270,67 +323,195 @@ export default function FollowupDrafts() {
   const selectedCount = selected.size
   const overCap = selectedCount > SEND_CAP
 
+  // Candidates for a slot's "Preview for" selector: selected rows resolving
+  // to this slot's template, or — when none are selected yet — any row
+  // matching the old sample-picking rule (has_reroofing).
+  function previewCandidates(slot) {
+    const selectedForSlot = rows.filter(r => selected.has(r._idx) && getTemplate(r) === slot.key)
+    if (selectedForSlot.length > 0) return selectedForSlot
+    return rows.filter(r => Boolean(r.has_reroofing) === slot.hasReroofing)
+  }
+
+  // The customer currently chosen for a slot's preview: the selector's
+  // choice if it's still a valid candidate, else the first candidate.
+  function currentPreviewCustomer(slot) {
+    const candidates = previewCandidates(slot)
+    if (candidates.length === 0) return null
+    const chosen = candidates.find(r => r._idx === previewRowIdx[slot.key])
+    return chosen || candidates[0]
+  }
+
+  // Fetches a preview for one slot. When includeCustom is true and the slot
+  // already has edited text/subject, those are sent so the preview reflects
+  // the edit; otherwise the server's own default is requested (used for the
+  // very first preview of a slot, and by "Reset to default").
+  async function fetchDraftPreview(slot, customer, { includeCustom }) {
+    const body = { ...customerFollowupFields(customer), template: slot.key }
+    if (includeCustom) {
+      if (editedText[slot.key] !== undefined) body.custom_text = editedText[slot.key]
+      if (editedSubject[slot.key] !== undefined) body.custom_subject = editedSubject[slot.key]
+    }
+    const res = await fetchTimeout(`${API}/followup/draft`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || 'Could not generate draft.')
+    }
+    return res.json()
+  }
+
   async function generateSamples() {
     setGenerating(true)
     const nextDrafts = {}
     const nextErrors = {}
+    const nextDefaultSubject = {}
+    const nextDefaultText = {}
+    const nextEditedSubject = {}
+    const nextEditedText = {}
     await Promise.all(SAMPLE_SLOTS.map(async (slot) => {
-      const customer = rows.find(r => Boolean(r.has_reroofing) === slot.hasReroofing)
+      const customer = currentPreviewCustomer(slot)
       if (!customer) {
         nextErrors[slot.key] = 'No matching customer found in the uploaded file.'
         return
       }
       try {
-        const res = await fetchTimeout(`${API}/followup/draft`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: customer.name,
-            last_service: customer.last_service,
-            last_service_date: customer.last_service_date,
-            has_reroofing: customer.has_reroofing,
-            reroofing_last_date: customer.reroofing_last_date,
-            business_signal: customer.business_signal,
-          }),
-        })
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}))
-          throw new Error(err.detail || 'Could not generate draft.')
-        }
-        const data = await res.json()
+        // First time this slot is generated, fetch the server's default
+        // (no custom_text/custom_subject) so the owner sees — and can
+        // edit — the real placeholder template, not an empty box. Later
+        // re-generates (e.g. after re-uploading a different file) preserve edits.
+        const isFirstGenerate = editedText[slot.key] === undefined
+        const data = await fetchDraftPreview(slot, customer, { includeCustom: !isFirstGenerate })
         nextDrafts[slot.key] = { ...data, customerName: customer.name }
+        if (isFirstGenerate) {
+          nextDefaultSubject[slot.key] = data.template_subject
+          nextDefaultText[slot.key] = data.template_text
+          nextEditedSubject[slot.key] = data.template_subject
+          nextEditedText[slot.key] = data.template_text
+        }
       } catch (e) {
         nextErrors[slot.key] = errMsg(e)
       }
     }))
     setDrafts(prev => ({ ...prev, ...nextDrafts }))
     setDraftErrors(nextErrors)
+    setDefaultSubject(prev => ({ ...prev, ...nextDefaultSubject }))
+    setDefaultText(prev => ({ ...prev, ...nextDefaultText }))
+    setEditedSubject(prev => ({ ...prev, ...nextEditedSubject }))
+    setEditedText(prev => ({ ...prev, ...nextEditedText }))
     setGenerating(false)
   }
 
-  function updateDraftField(cat, field, value) {
-    setDrafts(prev => ({ ...prev, [cat]: { ...prev[cat], [field]: value } }))
+  async function resetToDefault(slotKey) {
+    const slot = SAMPLE_SLOTS.find(s => s.key === slotKey)
+    const customer = slot && currentPreviewCustomer(slot)
+    if (!slot || !customer) return
+    setResettingSlot(slotKey)
+    try {
+      const data = await fetchDraftPreview(slot, customer, { includeCustom: false })
+      setDrafts(prev => ({ ...prev, [slotKey]: { ...data, customerName: customer.name } }))
+      setDefaultSubject(prev => ({ ...prev, [slotKey]: data.template_subject }))
+      setDefaultText(prev => ({ ...prev, [slotKey]: data.template_text }))
+      setEditedSubject(prev => ({ ...prev, [slotKey]: data.template_subject }))
+      setEditedText(prev => ({ ...prev, [slotKey]: data.template_text }))
+      setDraftErrors(prev => ({ ...prev, [slotKey]: undefined }))
+    } catch (e) {
+      setDraftErrors(prev => ({ ...prev, [slotKey]: errMsg(e) }))
+    } finally {
+      setResettingSlot(null)
+    }
+  }
+
+  // Debounced (~500ms) re-preview whenever the owner edits Subject/the body
+  // template, or changes which customer a slot is previewing, for any slot
+  // that's already been generated at least once.
+  useEffect(() => {
+    const slotsToRefresh = SAMPLE_SLOTS
+      .map(slot => ({ slot, customer: currentPreviewCustomer(slot) }))
+      .filter(({ slot, customer }) => customer && drafts[slot.key])
+    if (slotsToRefresh.length === 0) return
+    const tid = setTimeout(() => {
+      slotsToRefresh.forEach(async ({ slot, customer }) => {
+        try {
+          const data = await fetchDraftPreview(slot, customer, { includeCustom: true })
+          setDrafts(prev => ({ ...prev, [slot.key]: { ...data, customerName: customer.name } }))
+          setDraftErrors(prev => ({ ...prev, [slot.key]: undefined }))
+        } catch (e) {
+          setDraftErrors(prev => ({ ...prev, [slot.key]: errMsg(e) }))
+        }
+      })
+    }, 500)
+    return () => clearTimeout(tid)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editedText, editedSubject, previewRowIdx, selected, rows])
+
+  function insertPlaceholder(slotKey, token) {
+    const field = focusedField[slotKey] || 'text'
+    const setter = field === 'subject' ? setEditedSubject : setEditedText
+    const current = (field === 'subject' ? editedSubject[slotKey] : editedText[slotKey]) ?? ''
+    const el = fieldRefs.current[`${slotKey}_${field}`]
+    if (!el) {
+      setter(prev => ({ ...prev, [slotKey]: current + token }))
+      return
+    }
+    const start = el.selectionStart ?? current.length
+    const end = el.selectionEnd ?? current.length
+    const next = current.slice(0, start) + token + current.slice(end)
+    setter(prev => ({ ...prev, [slotKey]: next }))
+    requestAnimationFrame(() => {
+      el.focus()
+      const pos = start + token.length
+      el.setSelectionRange(pos, pos)
+    })
+  }
+
+  function isSlotEdited(slotKey) {
+    return editedSubject[slotKey] !== undefined && (
+      editedSubject[slotKey] !== defaultSubject[slotKey] || editedText[slotKey] !== defaultText[slotKey]
+    )
   }
 
   async function sendEmails() {
-    const rawItems = rows
-      .filter(r => selected.has(r._idx))
-      .map(r => ({
-        name: r.name,
-        email: r.email,
-        last_service: r.last_service,
-        last_service_date: r.last_service_date,
-        has_reroofing: r.has_reroofing,
-        reroofing_last_date: r.reroofing_last_date,
-        business_signal: r.business_signal,
-        template: getTemplate(r),
-      }))
+    const selectedRows = rows.filter(r => selected.has(r._idx))
+    const rawItems = selectedRows.map(r => ({
+      name: r.name,
+      email: r.email,
+      last_service: r.last_service,
+      last_service_date: r.last_service_date,
+      has_reroofing: r.has_reroofing,
+      reroofing_last_date: r.reroofing_last_date,
+      business_signal: r.business_signal,
+      template: getTemplate(r),
+    }))
     if (rawItems.length === 0 || rawItems.length > SEND_CAP) return
 
-    const confirmMsg = sendMode?.mode === 'test'
+    // Only slots that have actually been generated/edited at all are sent
+    // as overrides — an untouched slot just uses the server's built-in
+    // default, same as before this feature existed.
+    const customTextByTemplate = {}
+    const customSubjectByTemplate = {}
+    SAMPLE_SLOTS.forEach(slot => {
+      if (editedText[slot.key] !== undefined) customTextByTemplate[slot.key] = editedText[slot.key]
+      if (editedSubject[slot.key] !== undefined) customSubjectByTemplate[slot.key] = editedSubject[slot.key]
+    })
+
+    // Which templates this specific send will actually use, AND are
+    // genuinely edited (not just generated-but-untouched) — for the
+    // confirm-dialog wording.
+    const usedTemplates = new Set(selectedRows.map(getTemplate))
+    const editedUsedLabels = SAMPLE_SLOTS
+      .filter(slot => usedTemplates.has(slot.key) && isSlotEdited(slot.key))
+      .map(slot => slot.label)
+
+    const parts = [sendMode?.mode === 'test'
       ? `Send ${rawItems.length} email${rawItems.length !== 1 ? 's' : ''}? In DEV all will be sent to ${sendMode.test_recipient}, not to the customers.`
-      : `Send ${rawItems.length} email${rawItems.length !== 1 ? 's' : ''}?`
-    if (!window.confirm(confirmMsg)) return
+      : `Send ${rawItems.length} email${rawItems.length !== 1 ? 's' : ''}?`]
+    if (editedUsedLabels.length > 0) {
+      parts.push(`Using edited wording for: ${editedUsedLabels.join(', ')}.`)
+    }
+    if (!window.confirm(parts.join(' '))) return
 
     const { kept, dupSkipped } = dedupeByEmail(rawItems)
     const chunks = chunkItems(kept, CHUNK_SIZE)
@@ -347,7 +528,11 @@ export default function FollowupDrafts() {
           const res = await fetchTimeout(`${API}/followup/send`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items: chunk }),
+            body: JSON.stringify({
+              items: chunk,
+              custom_text_by_template: customTextByTemplate,
+              custom_subject_by_template: customSubjectByTemplate,
+            }),
           }, 60000)
           if (!res.ok) {
             const err = await res.json().catch(() => ({}))
@@ -397,7 +582,7 @@ export default function FollowupDrafts() {
           )}
         </div>
         <p className="text-gray-500 text-sm mt-0.5">
-          Upload a past-customer list and generate sample follow-up email drafts. Uploads are saved only when you click Save to Sheet. Drafts are never saved.
+          Upload a past-customer list and generate sample follow-up email drafts. Uploads are saved only when you click Save to Sheet. Edited wording lives in this browser tab only — it is never saved, and is lost on refresh.
         </p>
       </div>
 
@@ -455,7 +640,12 @@ export default function FollowupDrafts() {
         <>
           {/* Generate samples — above the customer list */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <h2 className="text-base font-semibold text-gray-800">Sample Drafts</h2>
+            <div>
+              <h2 className="text-base font-semibold text-gray-800">Sample Drafts</h2>
+              <p className="text-xs text-gray-400">
+                Editing Subject or the email body applies to every customer sent that template — not just the one previewed below.
+              </p>
+            </div>
             <button
               onClick={generateSamples}
               disabled={generating}
@@ -466,7 +656,10 @@ export default function FollowupDrafts() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            {SAMPLE_SLOTS.map(slot => (
+            {SAMPLE_SLOTS.map(slot => {
+              const candidates = previewCandidates(slot)
+              const previewCustomer = currentPreviewCustomer(slot)
+              return (
               <div key={slot.key} className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-2">
                 <h3 className="text-sm font-semibold text-gray-800">{slot.label}</h3>
                 {draftErrors[slot.key] && (
@@ -474,21 +667,64 @@ export default function FollowupDrafts() {
                 )}
                 {drafts[slot.key] ? (
                   <>
-                    <p className="text-xs text-gray-400">For {drafts[slot.key].customerName}</p>
-                    <label className="text-xs text-gray-500 font-medium">Subject</label>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs text-gray-500 font-medium">Preview for</label>
+                      <button
+                        onClick={() => resetToDefault(slot.key)}
+                        disabled={resettingSlot === slot.key || !isSlotEdited(slot.key)}
+                        className="text-xs text-gray-500 underline hover:text-gray-700 disabled:opacity-40 disabled:no-underline"
+                      >
+                        {resettingSlot === slot.key ? 'Resetting…' : 'Reset to default'}
+                      </button>
+                    </div>
+                    <select
+                      value={previewCustomer?._idx ?? ''}
+                      onChange={e => setPreviewRowIdx(prev => ({ ...prev, [slot.key]: Number(e.target.value) }))}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                      {candidates.map(r => (
+                        <option key={r._idx} value={r._idx}>{r.name || '(no name)'} — {r.email || 'no email'}</option>
+                      ))}
+                    </select>
+
+                    <label className="text-xs text-gray-500 font-medium mt-1">Placeholders (click to insert)</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {FOLLOWUP_PLACEHOLDERS.map(p => (
+                        <button
+                          key={p.token}
+                          type="button"
+                          onClick={() => insertPlaceholder(slot.key, p.token)}
+                          title={p.note || undefined}
+                          className="px-2 py-1 rounded border border-gray-300 text-xs text-gray-600 hover:bg-gray-50"
+                        >
+                          {p.token}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      {'{{year}}'}, {'{{service}}'} and {'{{reroofing_year}}'} can be empty for some customers — use {'{{service_phrase}}'} if unsure.
+                    </p>
+
+                    <label className="text-xs text-gray-500 font-medium mt-1">Subject</label>
                     <input
-                      value={drafts[slot.key].subject}
-                      onChange={e => updateDraftField(slot.key, 'subject', e.target.value)}
+                      ref={el => { fieldRefs.current[`${slot.key}_subject`] = el }}
+                      value={editedSubject[slot.key] ?? ''}
+                      onChange={e => setEditedSubject(prev => ({ ...prev, [slot.key]: e.target.value }))}
+                      onFocus={() => setFocusedField(prev => ({ ...prev, [slot.key]: 'subject' }))}
                       className="w-full text-sm font-medium text-gray-800 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                     />
-                    <label className="text-xs text-gray-500 font-medium mt-1">Plain text</label>
+                    <label className="text-xs text-gray-500 font-medium mt-1">Email body (editable)</label>
                     <textarea
-                      value={drafts[slot.key].body_text}
-                      onChange={e => updateDraftField(slot.key, 'body_text', e.target.value)}
-                      rows={14}
+                      ref={el => { fieldRefs.current[`${slot.key}_text`] = el }}
+                      value={editedText[slot.key] ?? ''}
+                      onChange={e => setEditedText(prev => ({ ...prev, [slot.key]: e.target.value }))}
+                      onFocus={() => setFocusedField(prev => ({ ...prev, [slot.key]: 'text' }))}
+                      rows={12}
                       className="w-full text-sm text-gray-700 border border-gray-200 rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-200"
                     />
-                    <label className="text-xs text-gray-500 font-medium mt-1">HTML preview</label>
+                    <label className="text-xs text-gray-500 font-medium mt-1">
+                      Full preview for {previewCustomer?.name || '(no name)'} (body + signature — signature and the opt-out line are never editable)
+                    </label>
                     <div
                       className="w-full text-sm text-gray-700 border border-gray-200 rounded-lg p-3 bg-gray-50 max-h-80 overflow-y-auto"
                       dangerouslySetInnerHTML={{ __html: drafts[slot.key].body_html }}
@@ -498,7 +734,8 @@ export default function FollowupDrafts() {
                   <p className="text-xs text-gray-400">Click "Generate samples" to draft a message for this case.</p>
                 )}
               </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* Filter */}

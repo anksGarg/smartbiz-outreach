@@ -1,0 +1,832 @@
+{
+  "source": "git show 604ca14:backend/followup_templates.py",
+  "configs": {
+    "default": {},
+    "real_feedback_url": {
+      "FEEDBACK_URL": "https://example.com/review"
+    },
+    "full_footer": {
+      "INCLUDE_COMPLIANCE_FOOTER": true,
+      "MAILING_ADDRESS_PLACEHOLDER": "100 Example Ave, Portland, OR 97200",
+      "FEEDBACK_URL": "https://example.com/review"
+    }
+  },
+  "cases": [
+    {
+      "config": "default",
+      "inputs": {
+        "name": "Jordan Testerson",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "2023-04-12",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Jordan,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2023. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Jordan,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2023. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "Jordan Testerson",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "2023-04-12",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Jordan,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2023. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Jordan,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2023. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "Dr. Casey Example",
+        "last_service": "Pressure Washing",
+        "last_service_date": "6/30/2022",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Casey,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing in 2022. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Casey,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing in 2022. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "Dr. Casey Example",
+        "last_service": "Pressure Washing",
+        "last_service_date": "6/30/2022",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Casey,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing in 2022. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Casey,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing in 2022. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "EXAMPLE, RILEY",
+        "last_service": "Re-Roofing",
+        "last_service_date": "",
+        "has_reroofing": true,
+        "reroofing_last_date": "2019-09-01",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Riley,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2019. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Riley,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2019. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "EXAMPLE, RILEY",
+        "last_service": "Re-Roofing",
+        "last_service_date": "",
+        "has_reroofing": true,
+        "reroofing_last_date": "2019-09-01",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Riley,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2019. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Riley,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2019. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "Sample Holdings LLC",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "2024",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2024. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2024. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "Sample Holdings LLC",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "2024",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2024. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2024. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "Avery & Quinn Placeholder",
+        "last_service": "Re-Roofing",
+        "last_service_date": "2018-02-02",
+        "has_reroofing": true,
+        "reroofing_last_date": "2018-02-02",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2018. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2018. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "Avery & Quinn Placeholder",
+        "last_service": "Re-Roofing",
+        "last_service_date": "2018-02-02",
+        "has_reroofing": true,
+        "reroofing_last_date": "2018-02-02",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2018. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2018. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "morgan o'fakename",
+        "last_service": "Pressure Washing",
+        "last_service_date": "not a date",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": true,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "morgan o'fakename",
+        "last_service": "Pressure Washing",
+        "last_service_date": "not a date",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": true,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "Renée Ficticia",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Renée,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Renée,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "Renée Ficticia",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Renée,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Renée,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "",
+        "last_service": "Re-Roofing",
+        "last_service_date": "2021-07-07",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2021. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2021. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "default",
+      "inputs": {
+        "name": "",
+        "last_service": "Re-Roofing",
+        "last_service_date": "2021-07-07",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2021. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review.\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2021. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a Google review.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "Jordan Testerson",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "2023-04-12",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Jordan,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2023. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Jordan,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2023. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "Jordan Testerson",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "2023-04-12",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Jordan,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2023. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Jordan,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2023. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "Dr. Casey Example",
+        "last_service": "Pressure Washing",
+        "last_service_date": "6/30/2022",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Casey,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing in 2022. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Casey,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing in 2022. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "Dr. Casey Example",
+        "last_service": "Pressure Washing",
+        "last_service_date": "6/30/2022",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Casey,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing in 2022. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Casey,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing in 2022. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "EXAMPLE, RILEY",
+        "last_service": "Re-Roofing",
+        "last_service_date": "",
+        "has_reroofing": true,
+        "reroofing_last_date": "2019-09-01",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Riley,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2019. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Riley,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2019. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "EXAMPLE, RILEY",
+        "last_service": "Re-Roofing",
+        "last_service_date": "",
+        "has_reroofing": true,
+        "reroofing_last_date": "2019-09-01",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Riley,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2019. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Riley,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2019. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "Sample Holdings LLC",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "2024",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2024. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2024. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "Sample Holdings LLC",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "2024",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2024. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2024. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "Avery & Quinn Placeholder",
+        "last_service": "Re-Roofing",
+        "last_service_date": "2018-02-02",
+        "has_reroofing": true,
+        "reroofing_last_date": "2018-02-02",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2018. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2018. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "Avery & Quinn Placeholder",
+        "last_service": "Re-Roofing",
+        "last_service_date": "2018-02-02",
+        "has_reroofing": true,
+        "reroofing_last_date": "2018-02-02",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2018. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2018. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "morgan o'fakename",
+        "last_service": "Pressure Washing",
+        "last_service_date": "not a date",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": true,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "morgan o'fakename",
+        "last_service": "Pressure Washing",
+        "last_service_date": "not a date",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": true,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "Renée Ficticia",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Renée,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Renée,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "Renée Ficticia",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Renée,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi Renée,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "",
+        "last_service": "Re-Roofing",
+        "last_service_date": "2021-07-07",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2021. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2021. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "real_feedback_url",
+      "inputs": {
+        "name": "",
+        "last_service": "Re-Roofing",
+        "last_service_date": "2021-07-07",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2021. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not receive emails from us, just reply and we'll take you off our list.",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2021. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not receive emails from us, just reply and we&#x27;ll take you off our list.</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "Jordan Testerson",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "2023-04-12",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Jordan,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2023. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi Jordan,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2023. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "Jordan Testerson",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "2023-04-12",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Jordan,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2023. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi Jordan,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2023. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "Dr. Casey Example",
+        "last_service": "Pressure Washing",
+        "last_service_date": "6/30/2022",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Casey,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing in 2022. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi Casey,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing in 2022. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "Dr. Casey Example",
+        "last_service": "Pressure Washing",
+        "last_service_date": "6/30/2022",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Casey,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing in 2022. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi Casey,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing in 2022. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "EXAMPLE, RILEY",
+        "last_service": "Re-Roofing",
+        "last_service_date": "",
+        "has_reroofing": true,
+        "reroofing_last_date": "2019-09-01",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Riley,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2019. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi Riley,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2019. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "EXAMPLE, RILEY",
+        "last_service": "Re-Roofing",
+        "last_service_date": "",
+        "has_reroofing": true,
+        "reroofing_last_date": "2019-09-01",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Riley,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2019. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi Riley,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2019. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "Sample Holdings LLC",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "2024",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2024. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2024. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "Sample Holdings LLC",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "2024",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2024. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning in 2024. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "Avery & Quinn Placeholder",
+        "last_service": "Re-Roofing",
+        "last_service_date": "2018-02-02",
+        "has_reroofing": true,
+        "reroofing_last_date": "2018-02-02",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2018. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2018. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "Avery & Quinn Placeholder",
+        "last_service": "Re-Roofing",
+        "last_service_date": "2018-02-02",
+        "has_reroofing": true,
+        "reroofing_last_date": "2018-02-02",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2018. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2018. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "morgan o'fakename",
+        "last_service": "Pressure Washing",
+        "last_service_date": "not a date",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": true,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "morgan o'fakename",
+        "last_service": "Pressure Washing",
+        "last_service_date": "not a date",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": true,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your pressure washing. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "Renée Ficticia",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Renée,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi Renée,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "Renée Ficticia",
+        "last_service": "Gutter Cleaning",
+        "last_service_date": "",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi Renée,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi Renée,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your gutter cleaning. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "",
+        "last_service": "Re-Roofing",
+        "last_service_date": "2021-07-07",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "with_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2021. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2021. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    },
+    {
+      "config": "full_footer",
+      "inputs": {
+        "name": "",
+        "last_service": "Re-Roofing",
+        "last_service_date": "2021-07-07",
+        "has_reroofing": false,
+        "reroofing_last_date": "",
+        "business_signal": false,
+        "template": "without_reroofing"
+      },
+      "expected": {
+        "subject": "Checking in from Willamette Power Roofing",
+        "body_text": "Hi there,\n\nIt's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2021. We don't take that lightly.\n\nWith the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.\n\nIf you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\nWe'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text 503-410-6919.\n\nThanks again for your business. If you have a minute, please leave us a Google review. https://example.com/review\n\nRegards,\nGus and Ajay\nOwners, Willamette Power Roofing\n503-410-6919 | info@willametteroof.com | www.willametteroof.com\nCCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded & Insured\n\nIf you'd rather not hear from us again, just reply and let us know and we'll take you off our list.\n100 Example Ave, Portland, OR 97200",
+        "body_html": "<p>Hi there,</p>\n<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your re-roofing in 2021. We don't take that lightly.</p>\n<p>With the rainy season close, now is a good time to clear moss and flush gutters before the first big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and new gutters if yours are sagging or undersized.</p>\n<p>If you've been wondering how much life your roof has left, let's talk about it before it starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>\n<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you need. Just reply to this email or call/text <a href=\"tel:503-410-6919\">503-410-6919</a>.</p>\n<p>Thanks again for your business. If you have a minute, please leave us a <a href=\"https://example.com/review\">Google review</a>.</p>\n<p>Regards,<br>Gus and Ajay<br>Owners, Willamette Power Roofing<br><a href=\"tel:503-410-6919\">503-410-6919</a> | <a href=\"mailto:info@willametteroof.com\">info@willametteroof.com</a> | <a href=\"https://www.willametteroof.com\">www.willametteroof.com</a><br>CCB 260629 · WA WPRLLL*747CQ · Licensed, Bonded &amp; Insured</p><p>If you&#x27;d rather not hear from us again, just reply and let us know and we&#x27;ll take you off our list.<br>100 Example Ave, Portland, OR 97200</p>"
+      }
+    }
+  ]
+}
