@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { API_URL as API } from '../config'
+import { sendConfirmText, useBannerSendMode } from '../envInfo'
+import SendBar from '../components/SendBar'
 
 const FOLLOWUP_PLACEHOLDERS = [
   { token: '{{first_name}}', note: null },
@@ -22,6 +24,8 @@ const TEMPLATE_OPTIONS = [
 ]
 const SEND_CAP = 50
 const CHUNK_SIZE = 5
+// Same rule as the backend's _FOLLOWUP_EMAIL_RE (main.py).
+const EMAIL_RE = /^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$/
 
 // Wraps fetch with a timeout so a hung backend can't leave the UI stuck loading forever.
 async function fetchTimeout(url, opts = {}, ms = 30000) {
@@ -123,6 +127,7 @@ export default function FollowupDrafts() {
   // recipient instead of a hardcoded address.
   const [sendMode, setSendMode] = useState(null)
   const [sendModeError, setSendModeError] = useState(null)
+  useBannerSendMode(sendMode, sendModeError)
 
   // Send result — in memory only, cleared on next upload.
   const [sending, setSending] = useState(false)
@@ -320,8 +325,30 @@ export default function FollowupDrafts() {
     })
   }
 
+  // "Select all" targets: rows in the current filter that would actually be
+  // sent — a valid email, and only the first row per email (later rows with
+  // the same email are skipped at send time anyway, see dedupeByEmail).
+  const eligibleFiltered = []
+  const eligibleEmails = new Set()
+  filtered.forEach(r => {
+    const email = (r.email || '').trim()
+    const key = email.toLowerCase()
+    if (!EMAIL_RE.test(email) || eligibleEmails.has(key)) return
+    eligibleEmails.add(key)
+    eligibleFiltered.push(r)
+  })
+  function selectAllEligible() {
+    setSelected(new Set(eligibleFiltered.map(r => r._idx)))
+  }
+  function clearSelection() {
+    setSelected(new Set())
+  }
+
   const selectedCount = selected.size
   const overCap = selectedCount > SEND_CAP
+  const filteredIdx = new Set(filtered.map(r => r._idx))
+  const hiddenSelectedCount = [...selected].filter(idx => !filteredIdx.has(idx)).length
+  const selectedDuplicateCount = dedupeByEmail(rows.filter(r => selected.has(r._idx))).dupSkipped.length
 
   // Candidates for a slot's "Preview for" selector: selected rows resolving
   // to this slot's template, or — when none are selected yet — any row
@@ -505,9 +532,7 @@ export default function FollowupDrafts() {
       .filter(slot => usedTemplates.has(slot.key) && isSlotEdited(slot.key))
       .map(slot => slot.label)
 
-    const parts = [sendMode?.mode === 'test'
-      ? `Send ${rawItems.length} email${rawItems.length !== 1 ? 's' : ''}? In DEV all will be sent to ${sendMode.test_recipient}, not to the customers.`
-      : `Send ${rawItems.length} email${rawItems.length !== 1 ? 's' : ''}?`]
+    const parts = [sendConfirmText(rawItems.length, sendMode)]
     if (editedUsedLabels.length > 0) {
       parts.push(`Using edited wording for: ${editedUsedLabels.join(', ')}.`)
     }
@@ -739,29 +764,39 @@ export default function FollowupDrafts() {
           </div>
 
           {/* Filter */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
-              {['', ...CATEGORIES].map(cat => (
-                <button
-                  key={cat || 'all'}
-                  onClick={() => setFilterCategory(cat)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    filterCategory === cat ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {cat || 'All'}
-                </button>
-              ))}
-            </div>
-            <div className="text-sm text-gray-500">
-              {selectedCount} selected
-              {overCap && (
-                <span className="ml-2 text-red-600 font-medium">
-                  — max {SEND_CAP} per send, deselect {selectedCount - SEND_CAP}
-                </span>
-              )}
-            </div>
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+            {['', ...CATEGORIES].map(cat => (
+              <button
+                key={cat || 'all'}
+                onClick={() => setFilterCategory(cat)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  filterCategory === cat ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {cat || 'All'}
+              </button>
+            ))}
           </div>
+
+          {/* Send bar — sticky while the table below scrolls (the table is
+              the last thing on the page, so it stays stuck through the end) */}
+          <SendBar
+            selectedCount={selectedCount}
+            eligibleCount={eligibleFiltered.length}
+            hiddenCount={hiddenSelectedCount}
+            duplicateCount={selectedDuplicateCount}
+            sendCap={SEND_CAP}
+            onSelectAll={selectAllEligible}
+            onClear={clearSelection}
+            onSend={sendEmails}
+            sendDisabled={selectedCount === 0 || overCap || sending || !!sendModeError || !sendMode}
+            sendMode={sendMode}
+            sendModeError={sendModeError}
+            sending={sending}
+            sendProgress={sendProgress}
+            sendError={sendError}
+            sendResult={sendResult}
+          />
 
           {/* Table */}
           <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
@@ -845,44 +880,6 @@ export default function FollowupDrafts() {
               </tbody>
             </table>
           </div>
-
-          {/* Send */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              onClick={sendEmails}
-              disabled={selectedCount === 0 || overCap || sending || !!sendModeError || !sendMode}
-              className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-            >
-              {sending ? 'Sending…' : 'Send Email'}
-            </button>
-            {sending && sendProgress && (
-              <p className="text-sm text-gray-500">Sent {sendProgress.done} of {sendProgress.total}</p>
-            )}
-            {sendModeError && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{sendModeError}</p>
-            )}
-            {sendError && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{sendError}</p>
-            )}
-          </div>
-
-          {sendResult && (
-            <div className="bg-white rounded-xl border border-gray-200 p-4 text-sm text-gray-700">
-              <p className="font-medium mb-1">
-                Mode: {sendResult.mode} — {sendResult.sent.length} sent, {sendResult.skipped.length} skipped, {sendResult.failed.length} failed.
-              </p>
-              {sendResult.skipped.length > 0 && (
-                <p className="text-amber-700 text-xs mt-1">
-                  Skipped: {sendResult.skipped.map(s => `${s.name} (${s.reason})`).join(', ')}
-                </p>
-              )}
-              {sendResult.failed.length > 0 && (
-                <p className="text-red-700 text-xs mt-1">
-                  Failed: {sendResult.failed.map(f => `${f.name} (${f.error})`).join(', ')}
-                </p>
-              )}
-            </div>
-          )}
         </>
       )}
     </div>
