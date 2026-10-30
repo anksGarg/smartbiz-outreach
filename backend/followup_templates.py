@@ -99,9 +99,9 @@ INCLUDE_COMPLIANCE_FOOTER = False
 # Owner-approved fixed subject — same for every template, not a placeholder.
 SUBJECT = "Checking in from Willamette Power Roofing"
 
-# Owner has not supplied real copy for this yet — placeholder, do not invent a value.
+# Owner-supplied Google review link.
 # FEEDBACK_URL only becomes a clickable link once it's a real https:// URL.
-FEEDBACK_URL = "[GOOGLE REVIEW LINK]"
+FEEDBACK_URL = "https://g.page/r/CXk_0yKFsLBNEAI/review"
 
 # Literal default values for the placeholders above — used by is_live_ready()
 # to detect whether the owner has actually supplied real copy yet. SUBJECT is
