@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { API_URL as API } from '../config'
+import { sendConfirmText, useBannerSendMode } from '../envInfo'
+import SendBar from '../components/SendBar'
 
 const TIMEOUT_MSG = 'Something went wrong. Please try again.'
 const TONES = [
@@ -118,6 +120,7 @@ export default function CustomEmail() {
   // dialog shows the real test recipient instead of a hardcoded address.
   const [sendMode, setSendMode] = useState(null)
   const [sendModeError, setSendModeError] = useState(null)
+  useBannerSendMode(sendMode, sendModeError)
 
   const [sending, setSending] = useState(false)
   const [sendProgress, setSendProgress] = useState(null)
@@ -295,8 +298,17 @@ export default function CustomEmail() {
       return next
     })
   }
+  // "Select all" = every selectable row (valid email, not a duplicate) — the
+  // same rows the header checkbox selects; there's no filter on this page.
+  function selectAllEligible() {
+    setSelected(new Set(selectableRows.map(r => r._idx)))
+  }
+  function clearSelection() {
+    setSelected(new Set())
+  }
 
   const selectedCount = selected.size
+  const selectedDuplicateCount = dedupeByEmail(rows.filter(r => selected.has(r._idx))).dupSkipped.length
   const overCap = selectedCount > SEND_CAP
   const sendDisabled = (
     selectedCount === 0 || overCap || sending ||
@@ -311,10 +323,7 @@ export default function CustomEmail() {
       .map(r => ({ name: r.name, email: r.email }))
     if (rawItems.length === 0 || rawItems.length > SEND_CAP) return
 
-    const confirmMsg = sendMode?.mode === 'test'
-      ? `Send ${rawItems.length} email${rawItems.length !== 1 ? 's' : ''}? In DEV all will be sent to ${sendMode.test_recipient}, not to the customers.`
-      : `Send ${rawItems.length} email${rawItems.length !== 1 ? 's' : ''}?`
-    if (!window.confirm(confirmMsg)) return
+    if (!window.confirm(sendConfirmText(rawItems.length, sendMode))) return
 
     const { kept, dupSkipped } = dedupeByEmail(rawItems)
     const chunks = chunkItems(kept, CHUNK_SIZE)
@@ -520,17 +529,27 @@ export default function CustomEmail() {
       {/* (e) Recipient table */}
       {rows.length > 0 && (
         <>
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <h2 className="text-base font-semibold text-gray-800">Recipients</h2>
-            <div className="text-sm text-gray-500">
-              {selectedCount} selected
-              {overCap && (
-                <span className="ml-2 text-red-600 font-medium">
-                  — max {SEND_CAP} per send, deselect {selectedCount - SEND_CAP}
-                </span>
-              )}
-            </div>
-          </div>
+          <h2 className="text-base font-semibold text-gray-800">Recipients</h2>
+
+          {/* (f) Send bar — sticky while the table below scrolls (the table is
+              the last thing on the page, so it stays stuck through the end) */}
+          <SendBar
+            selectedCount={selectedCount}
+            eligibleCount={selectableRows.length}
+            hiddenCount={0}
+            duplicateCount={selectedDuplicateCount}
+            sendCap={SEND_CAP}
+            onSelectAll={selectAllEligible}
+            onClear={clearSelection}
+            onSend={sendEmails}
+            sendDisabled={sendDisabled}
+            sendMode={sendMode}
+            sendModeError={sendModeError}
+            sending={sending}
+            sendProgress={sendProgress}
+            sendError={sendError}
+            sendResult={sendResult}
+          />
 
           <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
             <table className="w-full text-sm text-left">
@@ -582,44 +601,6 @@ export default function CustomEmail() {
               </tbody>
             </table>
           </div>
-
-          {/* (f) Send */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              onClick={sendEmails}
-              disabled={sendDisabled}
-              className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-            >
-              {sending ? 'Sending…' : 'Send Email'}
-            </button>
-            {sending && sendProgress && (
-              <p className="text-sm text-gray-500">Sent {sendProgress.done} of {sendProgress.total}</p>
-            )}
-            {sendModeError && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{sendModeError}</p>
-            )}
-            {sendError && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{sendError}</p>
-            )}
-          </div>
-
-          {sendResult && (
-            <div className="bg-white rounded-xl border border-gray-200 p-4 text-sm text-gray-700">
-              <p className="font-medium mb-1">
-                Mode: {sendResult.mode} — {sendResult.sent.length} sent, {sendResult.skipped.length} skipped, {sendResult.failed.length} failed.
-              </p>
-              {sendResult.skipped.length > 0 && (
-                <p className="text-amber-700 text-xs mt-1">
-                  Skipped: {sendResult.skipped.map(s => `${s.name} (${s.reason})`).join(', ')}
-                </p>
-              )}
-              {sendResult.failed.length > 0 && (
-                <p className="text-red-700 text-xs mt-1">
-                  Failed: {sendResult.failed.map(f => `${f.name} (${f.error})`).join(', ')}
-                </p>
-              )}
-            </div>
-          )}
         </>
       )}
     </div>
