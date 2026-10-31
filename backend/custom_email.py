@@ -3,9 +3,10 @@ customer list (POST /custom-email/render, /custom-email/send,
 /custom-email/generate — see main.py).
 
 Reuses followup_templates for the first-name rule, the standard signature,
-and the compliance footer rather than duplicating them. Placeholder handling
-({{first_name}} / {{full_name}}) and the AI-generation prompt/parsing live
-here since they're specific to this feature.
+the compliance footer, and the {{first_name}}/{{full_name}} placeholder
+helpers (shared with the editable follow-up template) rather than
+duplicating them. The AI-generation prompt/parsing lives here since it's
+specific to this feature.
 """
 
 from __future__ import annotations
@@ -16,63 +17,7 @@ import re as _re
 
 import followup_templates as _ft
 
-_KNOWN_PLACEHOLDERS = {"first_name", "full_name"}
-
-# {{first_name}}, {{ First_Name }}, etc. — case-insensitive, any amount of
-# leading/trailing whitespace inside the braces.
-_PLACEHOLDER_RE = _re.compile(r"\{\{\s*([^{}]+?)\s*\}\}")
-
 _TONES = {"friendly", "professional", "short"}
-
-
-def _dedupe(items: list[str]) -> list[str]:
-    seen, out = set(), []
-    for item in items:
-        key = item.lower()
-        if key not in seen:
-            seen.add(key)
-            out.append(item)
-    return out
-
-
-def full_name_of(name: str) -> str:
-    """Whitespace-collapsed full name, or 'there' when blank."""
-    collapsed = " ".join((name or "").split())
-    return collapsed if collapsed else "there"
-
-
-def unknown_placeholders(text: str) -> list[str]:
-    """Every {{...}} token in text that isn't {{first_name}} or {{full_name}}
-    (case-insensitive), in order of first appearance, deduplicated."""
-    found = []
-    for m in _PLACEHOLDER_RE.finditer(text or ""):
-        token = m.group(1).strip()
-        if token.lower() not in _KNOWN_PLACEHOLDERS:
-            found.append("{{" + token + "}}")
-    return _dedupe(found)
-
-
-def substitute_placeholders(text: str, first_name: str, full_name: str) -> str:
-    """Replace {{first_name}}/{{full_name}} (case-insensitive, any spacing)
-    with the given values. Unknown {{...}} tokens are left untouched — they
-    are reported as warnings elsewhere, never silently dropped or guessed."""
-    def repl(m: "_re.Match[str]") -> str:
-        token = m.group(1).strip().lower()
-        if token == "first_name":
-            return first_name
-        if token == "full_name":
-            return full_name
-        return m.group(0)
-
-    return _PLACEHOLDER_RE.sub(repl, text or "")
-
-
-def _paragraphs_to_html(escaped_text: str) -> str:
-    """Blank lines -> paragraph breaks, single newlines -> <br>. Input must
-    already be HTML-escaped — this never looks at raw user text."""
-    blocks = _re.split(r"\n\s*\n", escaped_text.strip())
-    parts = [f"<p>{block.replace(chr(10), '<br>')}</p>" for block in blocks if block.strip()]
-    return "\n".join(parts)
 
 
 def render_custom_email(subject: str, body: str, name: str) -> dict:
@@ -92,11 +37,11 @@ def render_custom_email(subject: str, body: str, name: str) -> dict:
     warnings: list[str] = []
 
     first_name = _ft._first_name(name)
-    full_name = full_name_of(name)
+    full_name = _ft.full_name_of(name)
     if first_name == "there":
         warnings.append('Name is empty or looks like a business — used "there" as the greeting.')
 
-    unknown = _dedupe(unknown_placeholders(subject) + unknown_placeholders(body))
+    unknown = _ft.dedupe_strings(_ft.unknown_placeholders(subject) + _ft.unknown_placeholders(body))
     if unknown:
         warnings.append("Unknown placeholder(s): " + ", ".join(unknown))
 
@@ -105,14 +50,15 @@ def render_custom_email(subject: str, body: str, name: str) -> dict:
     if not body.strip():
         warnings.append("Message is empty.")
 
-    subject_out = substitute_placeholders(subject, first_name, full_name).replace("\r", "").replace("\n", "")
-    body_sub = substitute_placeholders(body, first_name, full_name)
+    placeholder_values = {"first_name": first_name, "full_name": full_name}
+    subject_out = _ft.substitute_placeholders(subject, placeholder_values).replace("\r", "").replace("\n", "")
+    body_sub = _ft.substitute_placeholders(body, placeholder_values)
 
     sig_text = _ft.signature_text()
     footer_text = _ft.compliance_footer_text()
     body_text = (f"{body_sub.rstrip()}\n\n{sig_text}" if body_sub.strip() else sig_text) + footer_text
 
-    body_html_paragraphs = _paragraphs_to_html(_html.escape(body_sub))
+    body_html_paragraphs = _ft.paragraphs_to_html(_html.escape(body_sub))
     sig_html = _ft.signature_html()
     footer_html = _ft.compliance_footer_html()
     body_html = (f"{body_html_paragraphs}\n{sig_html}" if body_html_paragraphs else sig_html) + footer_html

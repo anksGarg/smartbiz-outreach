@@ -38,6 +38,9 @@ from followup_templates import (
     render_followup_email as _render_followup_email,
     is_live_ready as _followup_is_live_ready,
     live_override_enabled as _live_override_enabled,
+    unknown_placeholders as _unknown_placeholders,
+    FOLLOWUP_KNOWN_PLACEHOLDERS as _FOLLOWUP_KNOWN_PLACEHOLDERS,
+    dedupe_strings as _dedupe_strings,
     _first_name as _followup_first_name,
 )
 import custom_email as _ce
@@ -357,6 +360,39 @@ class FollowupDraftRequest(BaseModel):
     reroofing_last_date: str = ""  # any date-ish string; only the year is used
     business_signal: bool = False
     template: str = ""             # "with_reroofing" | "without_reroofing"; blank -> default
+    custom_text: str = ""          # owner-edited offer+closing text; blank -> built-in default
+    custom_subject: str = ""       # owner-edited subject; blank -> built-in default
+
+
+_FOLLOWUP_CUSTOM_SUBJECT_MAX = 150
+_FOLLOWUP_CUSTOM_TEXT_MAX = 3000
+
+
+def _validate_followup_override(subject: str, text: str) -> None:
+    """Shared validation for the owner-edited per-template whole-body
+    subject/text, used by both /followup/draft and /followup/send. Raises
+    400 on anything invalid. "No HTML" means what it already means for
+    custom emails: the text is always HTML-escaped before rendering, never
+    interpreted as markup — there's no separate markup-rejection check here,
+    just length/placeholder validation. Uses FOLLOWUP_KNOWN_PLACEHOLDERS
+    (first_name/full_name plus service/year/service_phrase/reroofing_year)
+    rather than the smaller Custom Email placeholder set."""
+    if len(subject) > _FOLLOWUP_CUSTOM_SUBJECT_MAX:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Custom subject must be {_FOLLOWUP_CUSTOM_SUBJECT_MAX} characters or fewer.",
+        )
+    if len(text) > _FOLLOWUP_CUSTOM_TEXT_MAX:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Custom text must be {_FOLLOWUP_CUSTOM_TEXT_MAX} characters or fewer.",
+        )
+    unknown = _dedupe_strings(
+        _unknown_placeholders(subject, _FOLLOWUP_KNOWN_PLACEHOLDERS)
+        + _unknown_placeholders(text, _FOLLOWUP_KNOWN_PLACEHOLDERS)
+    )
+    if unknown:
+        raise HTTPException(status_code=400, detail=f"Unknown placeholder(s): {', '.join(unknown)}")
 
 
 @app.post("/followup/draft")
@@ -368,6 +404,9 @@ def followup_draft(req: FollowupDraftRequest):
             detail=f"last_service must be one of: {', '.join(_FOLLOWUP_CATEGORIES)}",
         )
 
+    if req.custom_text or req.custom_subject:
+        _validate_followup_override(req.custom_subject, req.custom_text)
+
     return _render_followup_email(
         name=req.name,
         last_service=category,
@@ -376,6 +415,8 @@ def followup_draft(req: FollowupDraftRequest):
         reroofing_last_date=req.reroofing_last_date,
         business_signal=req.business_signal,
         template=req.template,
+        custom_text=req.custom_text or None,
+        custom_subject=req.custom_subject or None,
     )
 
 
@@ -803,6 +844,11 @@ class FollowupSendItem(BaseModel):
 
 class FollowupSendRequest(BaseModel):
     items: list[FollowupSendItem] = []
+    # Request-level, not per-item: owner-edited offer+closing text / subject
+    # per template, applied to every item that resolves to that template.
+    # Missing key -> that template's built-in default is used.
+    custom_text_by_template: dict[str, str] = {}
+    custom_subject_by_template: dict[str, str] = {}
 
 
 def _strip_crlf(s: str) -> str:
@@ -948,6 +994,20 @@ def followup_send(req: FollowupSendRequest):
             detail=f"Cannot send more than {_FOLLOWUP_SEND_CAP} emails in one request.",
         )
 
+    # Validate the per-template overrides up front — reject the whole
+    # request (nothing sent) rather than silently ignore a bad key/value.
+    for template_key in {*req.custom_text_by_template.keys(), *req.custom_subject_by_template.keys()}:
+        if template_key not in _FOLLOWUP_TEMPLATES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"custom_text_by_template/custom_subject_by_template keys must be one of: {', '.join(_FOLLOWUP_TEMPLATES)}",
+            )
+    for template_key in _FOLLOWUP_TEMPLATES:
+        custom_text = req.custom_text_by_template.get(template_key, "")
+        custom_subject = req.custom_subject_by_template.get(template_key, "")
+        if custom_text or custom_subject:
+            _validate_followup_override(custom_subject, custom_text)
+
     send_mode = (os.getenv("FOLLOWUP_SEND_MODE") or "test").strip().lower()
 
     if send_mode != "test":
@@ -981,6 +1041,14 @@ def followup_send(req: FollowupSendRequest):
         seen_emails.add(email_key)
 
         template = item.template if item.template in _FOLLOWUP_TEMPLATES else None
+        # Same fallback rule render_followup_email() applies internally when
+        # template is None — duplicated here (not reused) only so this
+        # function can look up the right override; keep both in sync if
+        # either ever changes.
+        effective_template = template or ("with_reroofing" if item.has_reroofing else "without_reroofing")
+        custom_text = req.custom_text_by_template.get(effective_template) or None
+        custom_subject = req.custom_subject_by_template.get(effective_template) or None
+
         rendered = _render_followup_email(
             name=item.name,
             last_service=item.last_service,
@@ -989,6 +1057,8 @@ def followup_send(req: FollowupSendRequest):
             reroofing_last_date=item.reroofing_last_date,
             business_signal=item.business_signal,
             template=template,
+            custom_text=custom_text,
+            custom_subject=custom_subject,
         )
         rendered_items.append({
             "display_name": display_name,
@@ -1112,7 +1182,7 @@ def custom_email_send(req: CustomEmailSendRequest):
     if not body.strip():
         raise HTTPException(status_code=400, detail="Message is required.")
 
-    unknown = _ce._dedupe(_ce.unknown_placeholders(subject) + _ce.unknown_placeholders(body))
+    unknown = _dedupe_strings(_unknown_placeholders(subject) + _unknown_placeholders(body))
     if unknown:
         raise HTTPException(status_code=400, detail=f"Unknown placeholder(s): {', '.join(unknown)}")
 
@@ -1210,7 +1280,7 @@ def custom_email_generate(req: CustomEmailGenerateRequest):
     subject = _strip_crlf(parsed["subject"]).strip()
     body = parsed["body"]
 
-    unknown = _ce._dedupe(_ce.unknown_placeholders(subject) + _ce.unknown_placeholders(body))
+    unknown = _dedupe_strings(_unknown_placeholders(subject) + _unknown_placeholders(body))
     warnings = [f"Unknown placeholder(s): {', '.join(unknown)}"] if unknown else []
 
     print(f"[custom-email/generate] generated draft (tone={tone}, body_chars={len(body)})", flush=True)
@@ -1222,7 +1292,6 @@ def custom_email_generate(req: CustomEmailGenerateRequest):
 _GEOCODING_URL      = "https://maps.googleapis.com/maps/api/geocode/json"
 _SOLAR_URL          = "https://solar.googleapis.com/v1/buildingInsights:findClosest"
 _PLACES_FIND_URL    = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
-_PLACES_NEARBY_URL  = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
 _PLACES_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
 _PLACES_TEXT_URL    = "https://maps.googleapis.com/maps/api/place/textsearch/json"
 

@@ -24,6 +24,18 @@ dist/
 !frontend/dist/
 .parcel-cache/
 
+# Stray files accidentally dropped in the repo root (flyers, screenshots,
+# exports) — root-only (leading /) so this never hides anything under
+# frontend/ or backend/.
+/*.xlsx
+/*.zip
+/*.pdf
+/*.jpg
+/*.JPG
+/*.jpeg
+/*.png
+/*.textClipping
+
 # OS
 .DS_Store
 Thumbs.db

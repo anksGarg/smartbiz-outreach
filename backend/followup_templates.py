@@ -14,6 +14,74 @@ import re as _re
 
 CATEGORIES = ["Re-Roofing", "Gutter Cleaning", "Pressure Washing"]
 
+# ── Shared placeholder/paragraph helpers (also used by custom_email.py) ────
+# Live here, not in custom_email.py, specifically so this module never has to
+# import custom_email.py back — custom_email.py already imports this module,
+# and the reverse would be a circular import.
+
+KNOWN_PLACEHOLDERS = {"first_name", "full_name"}
+
+# The follow-up template's whole body/subject is placeholder text (not just
+# name fields) — service/year/service_phrase/reroofing_year are per-customer
+# history, computed in render_followup_email() and passed into
+# substitute_placeholders() alongside first_name/full_name.
+FOLLOWUP_KNOWN_PLACEHOLDERS = KNOWN_PLACEHOLDERS | {"service", "year", "service_phrase", "reroofing_year"}
+
+# {{first_name}}, {{ First_Name }}, etc. — case-insensitive, any amount of
+# leading/trailing whitespace inside the braces.
+_PLACEHOLDER_RE = _re.compile(r"\{\{\s*([^{}]+?)\s*\}\}")
+
+
+def dedupe_strings(items: list[str]) -> list[str]:
+    seen, out = set(), []
+    for item in items:
+        key = item.lower()
+        if key not in seen:
+            seen.add(key)
+            out.append(item)
+    return out
+
+
+def full_name_of(name: str) -> str:
+    """Whitespace-collapsed full name, or 'there' when blank."""
+    collapsed = " ".join((name or "").split())
+    return collapsed if collapsed else "there"
+
+
+def unknown_placeholders(text: str, known: set[str] = KNOWN_PLACEHOLDERS) -> list[str]:
+    """Every {{...}} token in text that isn't in `known` (case-insensitive),
+    in order of first appearance, deduplicated. Custom Email calls this with
+    the default (first_name/full_name only); the follow-up template passes
+    FOLLOWUP_KNOWN_PLACEHOLDERS instead — see main.py."""
+    found = []
+    for m in _PLACEHOLDER_RE.finditer(text or ""):
+        token = m.group(1).strip()
+        if token.lower() not in known:
+            found.append("{{" + token + "}}")
+    return dedupe_strings(found)
+
+
+def substitute_placeholders(text: str, values: dict[str, str]) -> str:
+    """Replace every {{token}} (case-insensitive, any spacing) whose
+    lowercased name is a key in `values` with that value. Unknown {{...}}
+    tokens are left untouched — they are reported as warnings/errors
+    elsewhere, never silently dropped or guessed. Custom Email passes
+    {"first_name": ..., "full_name": ...}; the follow-up template passes
+    those plus service/year/service_phrase/reroofing_year."""
+    def repl(m: "_re.Match[str]") -> str:
+        token = m.group(1).strip().lower()
+        return values.get(token, m.group(0))
+
+    return _PLACEHOLDER_RE.sub(repl, text or "")
+
+
+def paragraphs_to_html(escaped_text: str) -> str:
+    """Blank lines -> paragraph breaks, single newlines -> <br>. Input must
+    already be HTML-escaped — this never looks at raw user text."""
+    blocks = _re.split(r"\n\s*\n", escaped_text.strip())
+    parts = [f"<p>{block.replace(chr(10), '<br>')}</p>" for block in blocks if block.strip()]
+    return "\n".join(parts)
+
 # Plain-text unsubscribe line, appended to the body after generation (not left
 # to any template logic to skip, so it's always present verbatim when on).
 UNSUBSCRIBE_LINE = (
@@ -31,9 +99,9 @@ INCLUDE_COMPLIANCE_FOOTER = False
 # Owner-approved fixed subject — same for every template, not a placeholder.
 SUBJECT = "Checking in from Willamette Power Roofing"
 
-# Owner has not supplied real copy for this yet — placeholder, do not invent a value.
+# Owner-supplied Google review link.
 # FEEDBACK_URL only becomes a clickable link once it's a real https:// URL.
-FEEDBACK_URL = "[GOOGLE REVIEW LINK]"
+FEEDBACK_URL = "https://g.page/r/CXk_0yKFsLBNEAI/review"
 
 # Literal default values for the placeholders above — used by is_live_ready()
 # to detect whether the owner has actually supplied real copy yet. SUBJECT is
@@ -212,6 +280,86 @@ def _first_name(name: str) -> str:
     return first_word
 
 
+# Default whole-body template per template key — used when no custom_text is
+# supplied. Placeholder text: {{first_name}}/{{service_phrase}} get
+# substituted per recipient at render time (see render_followup_email()).
+# Reproduces today's hardcoded wording exactly — the opening sentence is no
+# longer a separate, non-editable piece; it's just the template's own first
+# paragraph like everything else.
+_DEFAULT_TEMPLATE_TEXT = {
+    "with_reroofing": (
+        "Hi {{first_name}},\n\n"
+        "It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your "
+        "{{service_phrase}}. We don't take that lightly.\n\n"
+        "With the rainy season close, now is a good time to clear moss and flush gutters before the first "
+        "big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and "
+        "new gutters if yours are sagging or undersized.\n\n"
+        f"We'll start with a free inspection of your roof and gutters, so you know exactly what you need. "
+        f"Just reply to this email or call/text {_PHONE}.\n\n"
+        "Thanks again for your business. If you have a minute, please leave us a Google review."
+    ),
+    "without_reroofing": (
+        "Hi {{first_name}},\n\n"
+        "It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with your "
+        "{{service_phrase}}. We don't take that lightly.\n\n"
+        "With the rainy season close, now is a good time to clear moss and flush gutters before the first "
+        "big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and "
+        "new gutters if yours are sagging or undersized.\n\n"
+        "If you've been wondering how much life your roof has left, let's talk about it before it "
+        "starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it "
+        "comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.\n\n"
+        f"We'll start with a free inspection of your roof and gutters, so you know exactly what you need. "
+        f"Just reply to this email or call/text {_PHONE}.\n\n"
+        "Thanks again for your business. If you have a minute, please leave us a Google review."
+    ),
+}
+
+_REVIEW_MARKER = "Google review"
+
+
+def _linkify_google_review(
+    editable_text: str, editable_html: str, feedback_url_is_real: bool,
+    feedback_url_html: str, feedback_url_raw: str,
+) -> tuple[str, str]:
+    """If FEEDBACK_URL is a real https:// URL, turn the first literal
+    occurrence of "Google review" in the (already placeholder-substituted,
+    already-escaped) editable text into a link (HTML) / append the URL
+    right after it (plain text) — same user-visible behavior as before this
+    text became owner-editable. If FEEDBACK_URL is still the bracketed
+    placeholder, or the phrase isn't present at all (the owner edited it
+    out), nothing changes — the placeholder string itself is never written
+    into either output."""
+    if not feedback_url_is_real:
+        return editable_text, editable_html
+    # Plain text: insert after the marker's own sentence-ending punctuation
+    # (if any immediately follows it), so "...Google review." becomes
+    # "...Google review. <url>" — the URL trails the sentence, not the bare
+    # word, matching the pre-editable-text behavior.
+    text_match = _re.search(_re.escape(_REVIEW_MARKER) + r"[.!?]?", editable_text)
+    if text_match:
+        insert_at = text_match.end()
+        editable_text = editable_text[:insert_at] + f" {feedback_url_raw}" + editable_text[insert_at:]
+    # HTML: link just the phrase itself, leaving any trailing punctuation
+    # outside the <a> tag.
+    if _REVIEW_MARKER in editable_html:
+        editable_html = editable_html.replace(
+            _REVIEW_MARKER, f'<a href="{feedback_url_html}">{_REVIEW_MARKER}</a>', 1
+        )
+    return editable_text, editable_html
+
+
+def _linkify_phone(editable_html: str) -> str:
+    """Turn the first literal occurrence of the phone number in the
+    (already-escaped) editable HTML into a tel: link — same user-visible
+    behavior as before this text became owner-editable, when the "Just
+    reply... call/text {_PHONE}" sentence had its own hardcoded tel: link.
+    Unconditional (unlike the review link, phone linking doesn't depend on
+    any owner-supplied setting). No-op if the owner edited the number out."""
+    if _PHONE in editable_html:
+        editable_html = editable_html.replace(_PHONE, f'<a href="tel:{_PHONE}">{_PHONE}</a>', 1)
+    return editable_html
+
+
 def render_followup_email(
     name: str = "",
     last_service: str = "",
@@ -220,22 +368,41 @@ def render_followup_email(
     reroofing_last_date: str = "",
     business_signal: bool = False,
     template: str | None = None,
+    custom_text: str | None = None,
+    custom_subject: str | None = None,
 ) -> dict:
-    """Build {subject, body_text, body_html} for one customer. Pure function —
-    no network, no file I/O, no Sheets access.
+    """Build {subject, template_subject, template_text, body_text, body_html}
+    for one customer. Pure function — no network, no file I/O, no Sheets
+    access.
 
-    template ("with_reroofing" | "without_reroofing") controls ONLY whether
-    Section B (the roof-replacement pitch) appears — it is independent of the
-    customer's real has_reroofing/reroofing_last_date history, which always
-    still drives the "{service} in {year}" sentence. Any other/missing value
-    falls back to the historical default: with_reroofing if has_reroofing
-    else without_reroofing (this is what /followup/draft relies on).
+    template ("with_reroofing" | "without_reroofing") controls ONLY which
+    DEFAULT whole-body template is used when custom_text is None (the
+    without_reroofing default adds the roof-replacement paragraph) — it is
+    independent of the customer's real has_reroofing/reroofing_last_date
+    history, which always still drives the {{service}}/{{year}} placeholder
+    values. Any other/missing value falls back to the historical default:
+    with_reroofing if has_reroofing else without_reroofing (this is what
+    /followup/draft relies on).
+
+    custom_text / custom_subject: the owner-edited whole-body template /
+    subject for this template, applied to every customer who gets this
+    template — NOT per customer. None (the default) uses
+    _DEFAULT_TEMPLATE_TEXT / SUBJECT. Both may contain {{first_name}},
+    {{full_name}}, {{service}}, {{year}}, {{service_phrase}}, or
+    {{reroofing_year}} (case-insensitive, any spacing) — substituted here
+    with this customer's own values; any other {{...}} token is left
+    untouched (callers are expected to reject unknown placeholders before
+    calling this — see main.py's _validate_followup_override). custom_text
+    is always HTML-escaped before any markup is added, so raw HTML never
+    reaches the rendered email. Only the signature and the compliance
+    footer/opt-out line are never part of custom_text — they're always
+    generated here, never editable.
     """
     if template not in ("with_reroofing", "without_reroofing"):
         template = "with_reroofing" if has_reroofing else "without_reroofing"
-    show_section_b = template == "without_reroofing"
 
     first_name = "there" if business_signal else _first_name(name)
+    full_name = full_name_of(name)
 
     if has_reroofing:
         service = "re-roofing"
@@ -243,87 +410,57 @@ def render_followup_email(
     else:
         service = (last_service or "").strip().lower()
         year = _year_of(last_service_date)
-
     service_phrase = f"{service} in {year}" if year else service
-    service_sentence = f"your {service_phrase}"
+    # Always the re-roofing year specifically, regardless of has_reroofing —
+    # lets the with_reroofing template reference it even for a customer
+    # whose {{service}}/{{year}} resolve to something else (template choice
+    # is independent of real history, same as {{service}}/{{year}} already are).
+    reroofing_year = _year_of(reroofing_last_date)
+
+    placeholder_values = {
+        "first_name": first_name,
+        "full_name": full_name,
+        "service": service,
+        "year": year,
+        "service_phrase": service_phrase,
+        "reroofing_year": reroofing_year,
+    }
+
+    # === Whole body: one placeholder template, substituted per customer ===
+    raw_template = custom_text if custom_text is not None else _DEFAULT_TEMPLATE_TEXT[template]
+    substituted = substitute_placeholders(raw_template, placeholder_values)
+    body_core_text = substituted.strip()
+    body_core_html = paragraphs_to_html(_html.escape(substituted))
 
     # FEEDBACK_URL only becomes a clickable link / gets appended once it's a
     # real https:// URL — while it's still the bracketed placeholder, the
-    # review ask stays plain text with no URL attached.
+    # review ask (wherever it ends up in the template text) stays plain text
+    # with no URL attached.
     feedback_url_is_real = FEEDBACK_URL.startswith("https://")
-
-    review_sentence_text = "Thanks again for your business. If you have a minute, please leave us a Google review."
-    if feedback_url_is_real:
-        review_sentence_text += f" {FEEDBACK_URL}"
-
-    # === Plain text ===
-    lines = [
-        f"Hi {first_name},",
-        "",
-        f"It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with {service_sentence}. "
-        "We don't take that lightly.",
-        "",
-        "With the rainy season close, now is a good time to clear moss and flush gutters before the first "
-        "big storm. We can help with roof cleaning and moss treatment, gutter and downspout flushing, and "
-        "new gutters if yours are sagging or undersized.",
-        "",
-    ]
-    if show_section_b:
-        lines.append(
-            "If you've been wondering how much life your roof has left, let's talk about it before it "
-            "starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it "
-            "comes with a 50-year non-prorated warranty and our 15-year workmanship warranty."
-        )
-        lines.append("")
-    lines.extend([
-        "We'll start with a free inspection of your roof and gutters, so you know exactly what you need. "
-        f"Just reply to this email or call/text {_PHONE}.",
-        "",
-        review_sentence_text,
-        "",
-        signature_text(),
-    ])
-    body_text = "\n".join(lines)
-
-    # === HTML (escape any customer-supplied text) ===
-    fn_html = _html.escape(first_name)
-    service_phrase_html = _html.escape(service_phrase)
-    service_sentence_html = f"your {service_phrase_html}"
     feedback_url_html = _html.escape(FEEDBACK_URL, quote=True)
+    body_core_text, body_core_html = _linkify_google_review(
+        body_core_text, body_core_html, feedback_url_is_real, feedback_url_html, FEEDBACK_URL,
+    )
+    body_core_html = _linkify_phone(body_core_html)
 
-    if feedback_url_is_real:
-        review_sentence_html = (
-            "Thanks again for your business. If you have a minute, please leave us a "
-            f'<a href="{feedback_url_html}">Google review</a>.'
-        )
-    else:
-        review_sentence_html = (
-            "Thanks again for your business. If you have a minute, please leave us a Google review."
-        )
-
-    html_parts = [
-        f"<p>Hi {fn_html},</p>",
-        f"<p>It's Gus and Ajay from Willamette Power Roofing. Thank you for trusting us with "
-        f"{service_sentence_html}. We don't take that lightly.</p>",
-        "<p>With the rainy season close, now is a good time to clear moss and flush gutters before the "
-        "first big storm. We can help with roof cleaning and moss treatment, gutter and downspout "
-        "flushing, and new gutters if yours are sagging or undersized.</p>",
-    ]
-    if show_section_b:
-        html_parts.append(
-            "<p>If you've been wondering how much life your roof has left, let's talk about it before it "
-            "starts leaking — plan the timing on your terms, not the weather's. If you go ahead, it "
-            "comes with a 50-year non-prorated warranty and our 15-year workmanship warranty.</p>"
-        )
-    html_parts.extend([
-        "<p>We'll start with a free inspection of your roof and gutters, so you know exactly what you "
-        f'need. Just reply to this email or call/text <a href="tel:{_PHONE}">{_PHONE}</a>.</p>',
-        f"<p>{review_sentence_html}</p>",
-        signature_html(),
-    ])
-    body_html = "\n".join(html_parts)
+    # === Assemble: the (substituted) body, then the signature, then the footer ===
+    body_text = f"{body_core_text}\n\n{signature_text()}"
+    body_html = f"{body_core_html}\n{signature_html()}"
 
     body_text += compliance_footer_text()
     body_html += compliance_footer_html()
 
-    return {"subject": SUBJECT, "body_text": body_text, "body_html": body_html}
+    if custom_subject is not None:
+        template_subject = custom_subject
+        subject = substitute_placeholders(custom_subject, placeholder_values).replace("\r", "").replace("\n", "")
+    else:
+        template_subject = SUBJECT
+        subject = SUBJECT
+
+    return {
+        "subject": subject,
+        "template_subject": template_subject,
+        "template_text": raw_template,
+        "body_text": body_text,
+        "body_html": body_html,
+    }
